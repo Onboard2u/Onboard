@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BasKu — Safe School Bus Rides</title>
+<style>
+:root{
+  --bg:#f6f7fb; --card:#fff; --ink:#1b2333; --muted:#6b7385; --line:#e4e7ef;
+  --brand:#f5a300; --brand-d:#d98f00; --navy:#16325c; --ok:#1f9d63; --warn:#e0812a; --bad:#d64545;
+  --radius:14px; --shadow:0 4px 18px rgba(22,50,92,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+a{color:var(--navy)}
+.hidden{display:none!important}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid var(--line)}
+.topbar .in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:10px 18px}
+.logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:20px;color:var(--navy)}
+.logo .mark{width:34px;height:34px;border-radius:10px;background:var(--brand);display:grid;place-items:center}
+.logo .mark svg{width:22px;height:22px}
+.spacer{flex:1}
+.lang{border:1px solid var(--line);border-radius:10px;padding:7px 8px;background:#fff}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border-radius:10px;font-weight:600;transition:.15s;white-space:nowrap}
+.btn-p{background:var(--brand);color:#1b1300}.btn-p:hover{background:var(--brand-d)}
+.btn-n{background:var(--navy);color:#fff}.btn-n:hover{opacity:.92}
+.btn-o{border:1.5px solid var(--navy);color:var(--navy);background:#fff}.btn-o:hover{background:#eef2f9}
+.btn-g{color:var(--muted)}.btn-g:hover{color:var(--ink)}
+.btn-sm{padding:7px 12px;font-size:14px;border-radius:8px}
+.btn-ok{background:var(--ok);color:#fff}.btn-bad{background:#fdeaea;color:var(--bad)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* landing */
+.hero{background:linear-gradient(135deg,#16325c 0%,#24497f 100%);color:#fff;overflow:hidden}
+.hero .in{max-width:1180px;margin:0 auto;padding:64px 18px 72px;display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
+.pill{display:inline-block;background:rgba(245,163,0,.18);color:#ffc94d;font-weight:700;font-size:13px;padding:5px 12px;border-radius:99px;letter-spacing:.3px}
+.hero h1{font-size:clamp(30px,5vw,52px);line-height:1.1;margin:14px 0 16px;font-weight:800}
+.hero p{font-size:18px;color:#cdd8ea;max-width:520px}
+.hero .ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.hero .ctas .btn{padding:13px 22px}
+.hero .btn-o{background:transparent;color:#fff;border-color:#fff}
+.hero .btn-o:hover{background:rgba(255,255,255,.1)}
+.hero .link{display:inline-block;margin-top:16px;color:#ffc94d;text-decoration:underline;cursor:pointer;background:none}
+.phone{justify-self:center;width:280px;background:#0e1f3a;border-radius:34px;padding:12px;box-shadow:0 30px 60px rgba(0,0,0,.35)}
+.phone .scr{background:#f6f7fb;border-radius:24px;padding:16px;color:var(--ink);min-height:420px}
+.mini-card{background:#fff;border-radius:12px;padding:12px;margin-bottom:10px;box-shadow:var(--shadow);font-size:13px}
+.mini-card b{display:block;font-size:14px}
+.section{max-width:1180px;margin:0 auto;padding:64px 18px}
+.section h2{font-size:clamp(24px,3.5vw,34px);text-align:center;margin-bottom:8px}
+.section .sub{text-align:center;color:var(--muted);margin-bottom:36px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.feat{background:#fff;border-radius:var(--radius);padding:24px;box-shadow:var(--shadow)}
+.feat .ic{width:46px;height:46px;border-radius:12px;background:#fff4dc;display:grid;place-items:center;font-size:22px;margin-bottom:14px}
+.feat h3{font-size:18px;margin-bottom:6px}
+.feat p{color:var(--muted);font-size:15px}
+.steps{counter-reset:s}
+.step{position:relative;padding-left:0}
+.step .num{width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:700;margin-bottom:10px}
+.cta-band{background:var(--brand);border-radius:20px;padding:40px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between}
+.cta-band h2{text-align:left;margin:0;color:#1b1300}
+footer{background:#0e1f3a;color:#9fb0c9;font-size:14px}
+footer .in{max-width:1180px;margin:0 auto;padding:28px 18px;display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between}
+
+/* app shell */
+.shell{display:flex;min-height:calc(100vh - 57px)}
+.side{width:240px;background:#fff;border-right:1px solid var(--line);padding:18px 12px;flex-shrink:0}
+.side .who{padding:10px 12px 18px;border-bottom:1px solid var(--line);margin-bottom:12px}
+.side .who b{display:block}
+.side .who span{font-size:13px;color:var(--muted)}
+.nav-i{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:10px;color:var(--muted);font-weight:600;text-align:left;margin-bottom:2px}
+.nav-i:hover{background:#f1f3f8;color:var(--ink)}
+.nav-i.on{background:#fff4dc;color:var(--navy)}
+.nav-i .ic{width:22px;text-align:center}
+.nav-i .badge{margin-left:auto}
+.main{flex:1;padding:26px;max-width:1100px;width:100%;margin:0 auto}
+.main h1{font-size:24px;margin-bottom:4px}
+.main .lead{color:var(--muted);margin-bottom:22px}
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-bottom:18px}
+.card h3{font-size:17px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.between{justify-content:space-between}
+.stat{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+.stat .v{font-size:28px;font-weight:800;color:var(--navy)}
+.stat .l{color:var(--muted);font-size:14px}
+.badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-ok{background:#e3f5ec;color:var(--ok)}.b-warn{background:#fdf0e3;color:var(--warn)}.b-bad{background:#fdeaea;color:var(--bad)}.b-n{background:#e9eef7;color:var(--navy)}.b-y{background:#fff4dc;color:#a36a00}
+.list-i{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.list-i:last-child{border-bottom:0}
+.av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;flex-shrink:0}
+.grow{flex:1;min-width:0}
+.grow b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.grow small{color:var(--muted)}
+.empty{color:var(--muted);text-align:center;padding:24px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;color:var(--muted);font-weight:600;padding:10px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:12px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl-wrap{overflow-x:auto}
+
+/* route tracker */
+.route{position:relative;height:110px;margin:10px 4px 4px}
+.route .track{position:absolute;left:0;right:0;top:46px;height:6px;background:#e4e7ef;border-radius:3px}
+.route .fill{position:absolute;left:0;top:46px;height:6px;background:var(--brand);border-radius:3px;transition:width 1s linear}
+.route .stop{position:absolute;top:38px;transform:translateX(-50%);text-align:center;width:90px}
+.route .stop .dot{width:22px;height:22px;border-radius:50%;background:#fff;border:4px solid #c9cfdc;margin:0 auto}
+.route .stop.done .dot{border-color:var(--brand)}
+.route .stop small{display:block;font-size:12px;color:var(--muted);margin-top:6px;line-height:1.2}
+.route .bus{position:absolute;top:6px;transform:translateX(-50%);font-size:28px;transition:left 1s linear}
+
+/* forms */
+.form{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form .full{grid-column:1/-1}
+label.f{display:block;font-size:14px;font-weight:600;margin-bottom:5px}
+.inp{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;outline:none}
+.inp:focus{border-color:var(--navy)}
+textarea.inp{min-height:90px;resize:vertical}
+.err{color:var(--bad);font-size:13px;margin-top:4px}
+
+/* modal + toast */
+.ov{position:fixed;inset:0;background:rgba(14,31,58,.55);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:#fff;border-radius:18px;width:100%;max-width:520px;max-height:92vh;overflow:auto;padding:24px}
+.modal h2{font-size:21px;margin-bottom:4px}
+.modal .lead{color:var(--muted);margin-bottom:18px;font-size:15px}
+.tabs{display:flex;background:#f1f3f8;border-radius:10px;padding:4px;margin-bottom:18px}
+.tabs button{flex:1;padding:9px;border-radius:8px;font-weight:600;color:var(--muted);font-size:14px}
+.tabs button.on{background:#fff;color:var(--navy);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.toasts{position:fixed;right:16px;bottom:16px;z-index:60;display:flex;flex-direction:column;gap:8px;max-width:340px}
+.toast{background:var(--navy);color:#fff;padding:12px 16px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.2);font-size:14px;animation:tin .25s}
+@keyframes tin{from{opacity:0;transform:translateY(10px)}}
+.demo{background:#f1f3f8;border-radius:10px;padding:10px 12px;font-size:13px;color:var(--muted);margin-top:14px}
+
+/* mobile */
+.bnav{display:none}
+@media (max-width:900px){
+  .hero .in{grid-template-columns:1fr;padding:40px 18px 48px}
+  .phone{display:none}
+  .grid3{grid-template-columns:1fr}
+  .grid4{grid-template-columns:1fr 1fr}
+  .side{display:none}
+  .main{padding:18px 14px 96px}
+  .bnav{display:flex;position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);z-index:40;padding-bottom:env(safe-area-inset-bottom)}
+  .bnav button{flex:1;padding:8px 2px 10px;font-size:11px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;position:relative}
+  .bnav button .ic{font-size:20px}
+  .bnav button.on{color:var(--navy)}
+  .bnav .dotb{position:absolute;top:6px;right:calc(50% - 16px);width:8px;height:8px;border-radius:50%;background:var(--bad)}
+  .form{grid-template-columns:1fr}
+  .cta-band{padding:28px}
+  .hide-m{display:none}
+  .toasts{left:16px;right:16px;bottom:80px;max-width:none}
+  .topbar .btn-label{display:none}
+}
+@media (max-width:480px){
+  .section{padding:44px 16px}
+  .route .stop{width:64px}
+  .route .stop small{font-size:10px}
+  .ov{align-items:flex-end;padding:0}
+  .modal{border-radius:18px 18px 0 0;max-height:94vh}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="in">
+    <button class="logo" onclick="go('landing')" aria-label="BasKu home">
+      <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#16325c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="3"/><path d="M3 11h18M7 17v2M17 17v2"/><circle cx="7.5" cy="14" r=".6" fill="#16325c"/><circle cx="16.5" cy="14" r=".6" fill="#16325c"/></svg></span>
+      BasKu
+    </button>
+    <div class="spacer"></div>
+    <select class="lang" id="lang" onchange="setLang(this.value)" aria-label="Language">
+      <option value="en">EN</option><option value="bm">BM</option><option value="cn">中文</option>
+    </select>
+    <div id="authArea"></div>
+  </div>
+</header>
+
+<div id="view"></div>
+<nav class="bnav" id="bnav"></nav>
+<div id="modalRoot"></div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+/* ================= i18n ================= */
+const T = {
+  en:{login:"Login",logout:"Logout",tag:"Malaysia's school bus companion",h1:"School bus rides your family can trust",
+      hp:"Find a verified bus operator near your child's school, then follow every trip live, from pick-up to drop-off.",
+      parent:"Parents Enquire Here",op:"Bus Operator Sign Up",search:"Sign up to search for a bus operator",
+      featT:"Everything in one place",featS:"Built for parents, operators and schools.",
+      howT:"How it works",ctaT:"Ready for stress-free school runs?",start:"Get started",
+      f1:"Live trip tracking",f1d:"See where the bus is and get a notification when your child boards and arrives.",
+      f2:"Verified operators",f2d:"Every operator is checked by our team: licence, permits and vehicle details.",
+      f3:"No child left behind",f3d:"Drivers tick off each child at every stop, and anything missed is flagged straight away.",
+      s1:"Sign up",s1d:"Create a free parent account and add your children.",s2:"Find a bus",s2d:"Search operators by school or area and compare fees.",
+      s3:"Request a seat",s3d:"Send a request. The operator confirms within 24 hours.",s4:"Ride with peace of mind",s4d:"Track trips and get alerts every day."},
+  bm:{login:"Log Masuk",logout:"Log Keluar",tag:"Teman bas sekolah Malaysia",h1:"Perjalanan bas sekolah yang boleh dipercayai",
+      hp:"Cari pengendali bas yang disahkan berhampiran sekolah anak anda, dan ikuti setiap perjalanan secara langsung dari ambil hingga hantar.",
+      parent:"Pertanyaan Ibu Bapa",op:"Daftar Pengendali Bas",search:"Daftar untuk cari pengendali bas",
+      featT:"Semua di satu tempat",featS:"Dibina untuk ibu bapa, pengendali dan sekolah.",
+      howT:"Cara ia berfungsi",ctaT:"Sedia untuk perjalanan ke sekolah tanpa risau?",start:"Mula sekarang",
+      f1:"Jejak perjalanan langsung",f1d:"Lihat lokasi bas dan terima notifikasi bila anak naik dan tiba.",
+      f2:"Pengendali disahkan",f2d:"Setiap pengendali disemak oleh pasukan kami: lesen, permit dan kenderaan.",
+      f3:"Tiada anak tertinggal",f3d:"Pemandu tanda setiap anak di setiap hentian, dan yang tertinggal terus dimaklumkan.",
+      s1:"Daftar",s1d:"Buat akaun ibu bapa percuma dan tambah anak anda.",s2:"Cari bas",s2d:"Cari pengendali ikut sekolah atau kawasan dan bandingkan yuran.",
+      s3:"Mohon tempat",s3d:"Hantar permohonan. Pengendali sahkan dalam 24 jam.",s4:"Tenang setiap hari",s4d:"Jejak perjalanan dan terima makluman setiap hari."},
+  cn:{login:"登录",logout:"退出",tag:"马来西亚校车好帮手",h1:"让家长放心的校车服务",
+      hp:"寻找孩子学校附近经过认证的校车业者，从接送到抵达，全程实时追踪。",
+      parent:"家长咨询",op:"校车业者注册",search:"注册以搜索校车业者",
+      featT:"一站式服务",featS:"为家长、业者和学校而设计。",
+      howT:"如何运作",ctaT:"准备好轻松上学了吗？",start:"立即开始",
+      f1:"实时行程追踪",f1d:"查看校车位置，孩子上车和抵达时即时通知。",
+      f2:"认证业者",f2d:"每位业者都经过我们团队审核：执照、准证及车辆资料。",
+      f3:"不遗漏任何孩子",f3d:"司机在每个站点为孩子打勾，遗漏会立即提醒。",
+      s1:"注册",s1d:"免费创建家长账户并添加孩子。",s2:"找校车",s2d:"按学校或地区搜索业者并比较收费。",
+      s3:"申请座位",s3d:"提交申请，业者将在24小时内确认。",s4:"安心出行",s4d:"每天追踪行程并接收提醒。"}
+};
+let lang='en';
+const t=k=>(T[lang]&&T[lang][k])||T.en[k]||k;
+function setLang(l){lang=l;save();render()}
+
+/* ================= state ================= */
+const COLORS=['#16325c','#1f9d63','#e0812a','#7a4fd1','#d64545','#0f8ab4','#a36a00'];
+const initials=n=>n.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+const uid=()=>Math.random().toString(36).slice(2,9);
+const now=()=>new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const SEED = () => ({
+  user:null,
+  operators:[
+    {id:'op1',name:'Ahmad Transport Services',owner:'Ahmad Rahim',phone:'012-345 6789',email:'ahmad@demo.my',area:'Petaling Jaya',schools:['SK Taman Megah','SJK(C) Yuk Chai'],fee:180,seats:40,taken:31,rating:4.8,vehicle:'Van 14-seater ×2, Bus 26-seater',plate:'WXY 2231',status:'approved'},
+    {id:'op2',name:'Mei Ling School Bus',owner:'Tan Mei Ling',phone:'016-222 1188',email:'meiling@demo.my',area:'Subang Jaya',schools:['SK USJ 12','SMK Subang Utama'],fee:200,seats:26,taken:24,rating:4.9,vehicle:'Bus 26-seater',plate:'BKL 8890',status:'approved'},
+    {id:'op3',name:'Raju Express Kids',owner:'Raju Muthu',phone:'013-778 4321',email:'raju@demo.my',area:'Shah Alam',schools:['SK Seksyen 7','SMK Seksyen 9'],fee:150,seats:14,taken:6,rating:4.6,vehicle:'Van 14-seater',plate:'BNM 5521',status:'approved'},
+    {id:'op4',name:'Cheras Safe Ride',owner:'Lim Wei Jie',phone:'017-600 9090',email:'cheras@demo.my',area:'Cheras',schools:['SJK(C) Chung Hwa','SK Taman Connaught'],fee:170,seats:28,taken:10,rating:0,vehicle:'Bus 28-seater',plate:'VCD 1102',status:'pending'}
+  ],
+  parents:[{id:'p1',name:'Nurul Aisyah',email:'parent@demo.my',phone:'019-555 1212',area:'Petaling Jaya'}],
+  children:[
+    {id:'c1',parent:'p1',name:'Adam Haziq',school:'SK Taman Megah',grade:'Year 3',stop:'Jalan SS2/24',op:'op1'},
+    {id:'c2',parent:'p1',name:'Sofea Irdina',school:'SK Taman Megah',grade:'Year 1',stop:'Jalan SS2/24',op:null}
+  ],
+  requests:[{id:'r1',child:'c2',op:'op1',status:'pending',date:'2026-11-15'}],
+  roster:[ // op1's other riders
+    {id:'k1',op:'op1',name:'Daniel Lee',school:'SJK(C) Yuk Chai',stop:'SS3 Park'},
+    {id:'k2',op:'op1',name:'Hana Sofia',school:'SK Taman Megah',stop:'Jalan SS2/72'},
+    {id:'k3',op:'op1',name:'Arjun Kumar',school:'SK Taman Megah',stop:'Taman Paramount'}
+  ],
+  trip:{op:'op1',active:false,progress:0,status:{}}, // status: childId -> waiting|boarded|dropped|absent
+  notes:[{id:uid(),to:'p1',text:'Welcome to BasKu! Add your children to get started.',time:'08:00',read:true}],
+  enquiries:[{id:'e1',name:'Siti Hajar',phone:'011-2345 6789',area:'Klang',school:'SK Klang Utama',msg:'Looking for morning and afternoon transport for 2 kids.',date:'2026-11-16',status:'new'}],
+  lang:'en'
+});
+
+let S;
+function load(){try{const d=localStorage.getItem('basku_v1');S=d?JSON.parse(d):SEED()}catch(e){S=SEED()} lang=S.lang||'en'}
+function save(){S.lang=lang;try{localStorage.setItem('basku_v1',JSON.stringify(S))}catch(e){}}
+function resetDemo(){S=SEED();save();toast('Demo data reset');go('landing')}
+
+const opById=id=>S.operators.find(o=>o.id===id);
+const childById=id=>S.children.find(c=>c.id===id)||S.roster.find(c=>c.id===id);
+const me=()=>S.user;
+function notify(to,text){S.notes.unshift({id:uid(),to,text,time:now(),read:false})}
+
+/* ================= routing ================= */
+let route='landing', tab=null, filters={q:'',area:''};
+function go(r,tb){route=r;tab=tb||null;window.scrollTo(0,0);render()}
+
+function toast(msg){const el=document.createElement('div');el.className='toast';el.textContent=msg;document.getElementById('toasts').appendChild(el);setTimeout(()=>el.remove(),3200)}
+
+/* ================= render ================= */
+function render(){
+  document.getElementById('lang').value=lang;
+  document.documentElement.lang=lang==='cn'?'zh':lang==='bm'?'ms':'en';
+  const a=document.getElementById('authArea');
+  if(me()){
+    a.innerHTML=`<div class="row"><button class="btn btn-o btn-sm" onclick="go('${me().role}')"><span>🏠</span><span class="btn-label">Dashboard</span></button><button class="btn btn-g btn-sm" onclick="logout()">${t('logout')}</button></div>`;
+  } else a.innerHTML=`<button class="btn btn-n btn-sm" onclick="openLogin()">${t('login')}</button>`;
+  const v=document.getElementById('view'), bn=document.getElementById('bnav');
+  if(route==='landing'){v.innerHTML=landing();bn.innerHTML='';bn.style.display='none';return}
+  bn.style.display='';
+  if(!me()||me().role!==route){route='landing';return render()}
+  const cfg=NAVS[route];
+  if(!tab)tab=cfg[0].id;
+  const items=cfg.map(n=>{const b=n.badge?n.badge():0;return {...n,b}});
+  const sideNav=items.map(n=>`<button class="nav-i ${tab===n.id?'on':''}" onclick="go('${route}','${n.id}')"><span class="ic">${n.ic}</span>${n.label}${n.b?`<span class="badge b-bad">${n.b}</span>`:''}</button>`).join('');
+  bn.innerHTML=items.map(n=>`<button class="${tab===n.id?'on':''}" onclick="go('${route}','${n.id}')"><span class="ic">${n.ic}</span>${n.short||n.label}${n.b?'<span class="dotb"></span>':''}</button>`).join('');
+  const page=VIEWS[route][tab]();
+  v.innerHTML=`<div class="shell"><aside class="side"><div class="who"><b>${esc(me().name)}</b><span>${{parent:'Parent',operator:'Bus Operator',admin:'Administrator'}[route]}</span></div>${sideNav}<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px"><button class="nav-i" onclick="resetDemo()"><span class="ic">↺</span>Reset demo data</button></div></aside><main class="main">${page}</main></div>`;
+  updateTracker();
+}
+
+/* ================= landing ================= */
+function landing(){
+  return `
+  <section class="hero"><div class="in">
+    <div>
+      <span class="pill">🇲🇾 ${t('tag')}</span>
+      <h1>${t('h1')}</h1>
+      <p>${t('hp')}</p>
+      <div class="ctas">
+        <button class="btn btn-p" onclick="openEnquiry()">${t('parent')}</button>
+        <button class="btn btn-o" onclick="openSignup('operator')">${t('op')}</button>
+      </div>
+      <button class="link" onclick="openSignup('parent')">${t('search')} →</button>
+    </div>
+    <div class="phone" aria-hidden="true"><div class="scr">
+      <div style="font-weight:800;color:var(--navy);margin-bottom:10px">Good morning, Aisyah 👋</div>
+      <div class="mini-card"><b>🚌 Bus is 4 min away</b>Ahmad Transport · WXY 2231<div style="height:6px;background:#e4e7ef;border-radius:3px;margin-top:8px"><div style="width:68%;height:6px;background:var(--brand);border-radius:3px"></div></div></div>
+      <div class="mini-card"><b>✅ Adam boarded</b>07:02 · Jalan SS2/24</div>
+      <div class="mini-card"><b>🏫 Arrived at school</b>07:24 · SK Taman Megah</div>
+      <div class="mini-card"><b>💳 November fee paid</b>RM 180.00</div>
+    </div></div>
+  </div></section>
+
+  <section class="section">
+    <h2>${t('featT')}</h2><p class="sub">${t('featS')}</p>
+    <div class="grid3">
+      <div class="feat"><div class="ic">📍</div><h3>${t('f1')}</h3><p>${t('f1d')}</p></div>
+      <div class="feat"><div class="ic">🛡️</div><h3>${t('f2')}</h3><p>${t('f2d')}</p></div>
+      <div class="feat"><div class="ic">👧</div><h3>${t('f3')}</h3><p>${t('f3d')}</p></div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    <h2>${t('howT')}</h2><p class="sub">&nbsp;</p>
+    <div class="grid4">
+      ${[1,2,3,4].map(i=>`<div class="feat step"><div class="num">${i}</div><h3>${t('s'+i)}</h3><p>${t('s'+i+'d')}</p></div>`).join('')}
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    <div class="cta-band"><h2>${t('ctaT')}</h2>
+      <div class="row"><button class="btn btn-n" onclick="openSignup('parent')">${t('start')}</button><button class="btn btn-o" onclick="openSignup('operator')">${t('op')}</button></div>
+    </div>
+  </section>
+
+  <footer><div class="in"><span>© 2026 BasKu · Demo app</span><span><a style="color:#9fb0c9;cursor:pointer" onclick="openLogin('admin')">Admin login</a></span></div></footer>`;
+}
+
+/* ================= modals ================= */
+function modal(html){document.getElementById('modalRoot').innerHTML=`<div class="ov" onclick="if(event.target===this)closeModal()"><div class="modal" role="dialog">${html}</div></div>`}
+function closeModal(){document.getElementById('modalRoot').innerHTML=''}
+const fv=id=>(document.getElementById(id)?.value||'').trim();
+function need(ids){let ok=true;ids.forEach(id=>{const el=document.getElementById(id);if(!el.value.trim()){el.style.borderColor='var(--bad)';ok=false}else el.style.borderColor=''});if(!ok)toast('Please fill in the required fields');return ok}
+
+let loginRole='parent';
+function openLogin(role){
+  loginRole=role||loginRole;
+  const demo={parent:'parent@demo.my',operator:'ahmad@demo.my',admin:'admin@demo.my'}[loginRole];
+  modal(`<h2>${t('login')}</h2><p class="lead">Sign in to your BasKu account.</p>
+  <div class="tabs">${['parent','operator','admin'].map(r=>`<button class="${loginRole===r?'on':''}" onclick="openLogin('${r}')">${{parent:'Parent',operator:'Operator',admin:'Admin'}[r]}</button>`).join('')}</div>
+  <div style="display:grid;gap:12px">
+    <div><label class="f">Email</label><input class="inp" id="lEmail" type="email" value="${demo}"></div>
+    <div><label class="f">Password</label><input class="inp" id="lPass" type="password" value="demo1234"></div>
+    <button class="btn btn-p" onclick="doLogin()">${t('login')}</button>
+    ${loginRole!=='admin'?`<button class="btn btn-g btn-sm" onclick="openSignup('${loginRole}')">No account yet? Sign up</button>`:''}
+  </div>
+  <div class="demo">Demo mode: any password works. Demo email is filled in for you.</div>`);
+}
+function doLogin(){
+  const email=fv('lEmail').toLowerCase();
+  if(!email){toast('Enter your email');return}
+  if(loginRole==='admin'){S.user={role:'admin',id:'admin',name:'BasKu Admin'}}
+  else if(loginRole==='parent'){
+    const p=S.parents.find(x=>x.email.toLowerCase()===email);
+    if(!p){toast('No parent account with that email');return}
+    S.user={role:'parent',id:p.id,name:p.name};
+  } else {
+    const o=S.operators.find(x=>x.email.toLowerCase()===email);
+    if(!o){toast('No operator account with that email');return}
+    if(o.status==='pending'){toast('Your operator account is still awaiting approval');return}
+    if(o.status==='rejected'){toast('This operator application was not approved');return}
+    S.user={role:'operator',id:o.id,name:o.name};
+  }
+  save();closeModal();go(S.user.role);toast('Welcome, '+S.user.name);
+}
+function logout(){S.user=null;save();go('landing')}
+
+function openSignup(role){
+  if(role==='parent') modal(`<h2>Create parent account</h2><p class="lead">Free forever for parents. Search operators and track trips.</p>
+   <div class="form">
+    <div class="full"><label class="f">Full name *</label><input class="inp" id="sName"></div>
+    <div><label class="f">Email *</label><input class="inp" id="sEmail" type="email"></div>
+    <div><label class="f">Phone *</label><input class="inp" id="sPhone" type="tel" placeholder="012-345 6789"></div>
+    <div class="full"><label class="f">Area</label><select class="inp" id="sArea">${AREAS.map(a=>`<option>${a}</option>`).join('')}</select></div>
+    <div class="full row"><button class="btn btn-p" onclick="doSignupParent()">Create account</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div>
+   </div>`);
+  else modal(`<h2>Bus operator sign up</h2><p class="lead">Join BasKu and reach parents in your area. Applications are reviewed within 2 working days.</p>
+   <div class="form">
+    <div class="full"><label class="f">Company / service name *</label><input class="inp" id="oName"></div>
+    <div><label class="f">Owner name *</label><input class="inp" id="oOwner"></div>
+    <div><label class="f">Phone *</label><input class="inp" id="oPhone" type="tel"></div>
+    <div class="full"><label class="f">Email *</label><input class="inp" id="oEmail" type="email"></div>
+    <div><label class="f">Area *</label><select class="inp" id="oArea">${AREAS.map(a=>`<option>${a}</option>`).join('')}</select></div>
+    <div><label class="f">Monthly fee (RM) *</label><input class="inp" id="oFee" type="number" min="0" value="150"></div>
+    <div class="full"><label class="f">Schools served (comma separated) *</label><input class="inp" id="oSchools" placeholder="SK Taman Megah, SMK Damansara Jaya"></div>
+    <div><label class="f">Vehicle</label><input class="inp" id="oVeh" placeholder="Van 14-seater"></div>
+    <div><label class="f">Plate number</label><input class="inp" id="oPlate" placeholder="WXY 1234"></div>
+    <div><label class="f">Total seats</label><input class="inp" id="oSeats" type="number" min="1" value="14"></div>
+    <div class="full row"><button class="btn btn-p" onclick="doSignupOp()">Submit application</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div>
+   </div>`);
+}
+function doSignupParent(){
+  if(!need(['sName','sEmail','sPhone']))return;
+  if(S.parents.some(p=>p.email.toLowerCase()===fv('sEmail').toLowerCase())){toast('That email is already registered');return}
+  const p={id:uid(),name:fv('sName'),email:fv('sEmail'),phone:fv('sPhone'),area:fv('sArea')};
+  S.parents.push(p);S.user={role:'parent',id:p.id,name:p.name};
+  notify(p.id,'Welcome to BasKu! Add your children, then find a bus.');
+  save();closeModal();go('parent','kids');toast('Account created');
+}
+function doSignupOp(){
+  if(!need(['oName','oOwner','oPhone','oEmail','oFee','oSchools']))return;
+  S.operators.push({id:uid(),name:fv('oName'),owner:fv('oOwner'),phone:fv('oPhone'),email:fv('oEmail'),area:fv('oArea'),
+    schools:fv('oSchools').split(',').map(s=>s.trim()).filter(Boolean),fee:+fv('oFee')||0,seats:+fv('oSeats')||14,taken:0,rating:0,
+    vehicle:fv('oVeh')||'—',plate:fv('oPlate')||'—',status:'pending'});
+  save();
+  modal(`<h2>Application received 🎉</h2><p class="lead">Thanks! Our team will verify your details and contact you. Once approved you can log in with <b>${esc(fv('oEmail'))}</b>.</p><div class="demo">Demo tip: log in as Admin (footer link) to approve this application.</div><div style="margin-top:16px"><button class="btn btn-p" onclick="closeModal()">Done</button></div>`);
+}
+function openEnquiry(){
+  modal(`<h2>Parent enquiry</h2><p class="lead">Tell us where you need transport and we'll match you with operators.</p>
+  <div class="form">
+    <div class="full"><label class="f">Your name *</label><input class="inp" id="eName"></div>
+    <div><label class="f">Phone / WhatsApp *</label><input class="inp" id="ePhone" type="tel"></div>
+    <div><label class="f">Area</label><select class="inp" id="eArea">${AREAS.map(a=>`<option>${a}</option>`).join('')}</select></div>
+    <div class="full"><label class="f">School *</label><input class="inp" id="eSchool"></div>
+    <div class="full"><label class="f">Message</label><textarea class="inp" id="eMsg" placeholder="Number of children, session (morning/afternoon), etc."></textarea></div>
+    <div class="full row"><button class="btn btn-p" onclick="doEnquiry()">Send enquiry</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div>
+  </div>`);
+}
+function doEnquiry(){
+  if(!need(['eName','ePhone','eSchool']))return;
+  S.enquiries.unshift({id:uid(),name:fv('eName'),phone:fv('ePhone'),area:fv('eArea'),school:fv('eSchool'),msg:fv('eMsg'),date:new Date().toISOString().slice(0,10),status:'new'});
+  save();
+  modal(`<h2>Enquiry sent ✅</h2><p class="lead">We'll get back to you on WhatsApp within 1 working day. Want to browse operators yourself now?</p><div class="row"><button class="btn btn-p" onclick="openSignup('parent')">Create free account</button><button class="btn btn-g" onclick="closeModal()">Close</button></div>`);
+}
+const AREAS=['Petaling Jaya','Subang Jaya','Shah Alam','Cheras','Klang','Kuala Lumpur','Puchong','Ampang'];
+
+/* ================= helpers ================= */
+const av=(name,i=0)=>`<div class="av" style="background:${COLORS[(name.charCodeAt(0)+i)%COLORS.length]}">${initials(name)}</div>`;
+const stars=r=>r?`⭐ ${r.toFixed(1)}`:'<span class="badge b-n">New</span>';
+const stBadge=s=>({waiting:'<span class="badge b-n">Waiting</span>',boarded:'<span class="badge b-y">On bus</span>',dropped:'<span class="badge b-ok">Arrived</span>',absent:'<span class="badge b-bad">Absent</span>'}[s]||'<span class="badge b-n">—</span>');
+const opStBadge=s=>({approved:'<span class="badge b-ok">Approved</span>',pending:'<span class="badge b-warn">Pending</span>',rejected:'<span class="badge b-bad">Rejected</span>'}[s]);
+const reqBadge=s=>({pending:'<span class="badge b-warn">Pending</span>',accepted:'<span class="badge b-ok">Accepted</span>',declined:'<span class="badge b-bad">Declined</span>'}[s]);
+const unread=()=>S.notes.filter(n=>n.to===me()?.id&&!n.read).length;
+const STOPS=['Depot','Pick-up stops','On the way','School'];
+
+function routeBar(){
+  return `<div class="route" id="routeBar"><div class="track"></div><div class="fill" id="rFill"></div>
+   ${STOPS.map((s,i)=>`<div class="stop" data-i="${i}" style="left:${i/(STOPS.length-1)*100}%"><div class="dot"></div><small>${s}</small></div>`).join('')}
+   <div class="bus" id="rBus">🚌</div></div>`;
+}
+function updateTracker(){
+  const p=S.trip.progress, f=document.getElementById('rFill'), b=document.getElementById('rBus');
+  if(!f)return; f.style.width=p+'%'; b.style.left=p+'%';
+  document.querySelectorAll('#routeBar .stop').forEach(el=>{el.classList.toggle('done',p>=el.dataset.i/(STOPS.length-1)*100)});
+}
+
+/* ================= PARENT ================= */
+function myKids(){return S.children.filter(c=>c.parent===me().id)}
+const VIEWS={parent:{},operator:{},admin:{}};
+
+VIEWS.parent.home=()=>{
+  const kids=myKids(), riding=kids.filter(k=>k.op);
+  const tripOn=S.trip.active&&riding.some(k=>k.op===S.trip.op);
+  return `<h1>Hi, ${esc(me().name.split(' ')[0])} 👋</h1><p class="lead">Here's today's school run.</p>
+  ${riding.length?`<div class="card"><div class="row between"><h3 style="margin:0">🚌 Live trip</h3>${tripOn?'<span class="badge b-y">In progress</span>':'<span class="badge b-n">Not started</span>'}</div>
+     ${routeBar()}
+     ${riding.map(k=>`<div class="list-i">${av(k.name)}<div class="grow"><b>${esc(k.name)}</b><small>${esc(opById(k.op)?.name)} · ${esc(k.stop)}</small></div>${stBadge(S.trip.status[k.id]||'waiting')}</div>`).join('')}
+     ${!tripOn?'<div class="demo">The trip starts when your operator taps "Start trip". Demo tip: log in as Operator (ahmad@demo.my) to run a trip.</div>':''}
+   </div>`:`<div class="card"><h3>No bus yet</h3><p class="lead" style="margin:0 0 14px">Find an operator for your child's school to start tracking trips.</p><button class="btn btn-p" onclick="go('parent','find')">Find a bus</button></div>`}
+  <div class="grid4" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:18px">
+    <div class="stat"><div class="v">${kids.length}</div><div class="l">Children</div></div>
+    <div class="stat"><div class="v">${riding.length}</div><div class="l">With a bus</div></div>
+    <div class="stat"><div class="v">${S.requests.filter(r=>kids.some(k=>k.id===r.child)&&r.status==='pending').length}</div><div class="l">Pending requests</div></div>
+    <div class="stat"><div class="v">RM ${riding.reduce((s,k)=>s+(opById(k.op)?.fee||0),0)}</div><div class="l">Monthly fees</div></div>
+  </div>
+  <div class="card"><h3>🔔 Latest updates</h3>${notesList(4)}</div>`;
+};
+function notesList(n){
+  const list=S.notes.filter(x=>x.to===me().id).slice(0,n||99);
+  return list.length?list.map(x=>`<div class="list-i"><div class="grow"><b style="white-space:normal;font-weight:${x.read?500:700}">${esc(x.text)}</b><small>${x.time}</small></div>${x.read?'':'<span class="badge b-bad">New</span>'}</div>`).join(''):'<div class="empty">No updates yet</div>';
+}
+VIEWS.parent.kids=()=>{
+  const kids=myKids();
+  return `<div class="row between" style="margin-bottom:18px"><div><h1>My children</h1><p class="lead" style="margin:0">Manage profiles and bus assignments.</p></div><button class="btn btn-p" onclick="openAddKid()">+ Add child</button></div>
+  <div class="card">${kids.length?kids.map(k=>{
+    const req=S.requests.find(r=>r.child===k.id&&r.status==='pending');
+    return `<div class="list-i">${av(k.name)}<div class="grow"><b>${esc(k.name)}</b><small>${esc(k.grade)} · ${esc(k.school)} · Stop: ${esc(k.stop)}</small></div>
+     ${k.op?`<span class="badge b-ok">${esc(opById(k.op)?.name)}</span>`:req?`<span class="badge b-warn">Requested</span>`:`<button class="btn btn-o btn-sm" onclick="filters.q='${esc(k.school)}';go('parent','find')">Find bus</button>`}
+     <button class="btn btn-g btn-sm" title="Remove" onclick="removeKid('${k.id}')">✕</button></div>`}).join(''):'<div class="empty">No children added yet.</div>'}</div>`;
+};
+function openAddKid(){
+  modal(`<h2>Add child</h2><p class="lead">We'll use this to match your child with a bus.</p><div class="form">
+   <div class="full"><label class="f">Child's name *</label><input class="inp" id="kName"></div>
+   <div><label class="f">School *</label><input class="inp" id="kSchool" list="schoolList"><datalist id="schoolList">${[...new Set(S.operators.flatMap(o=>o.schools))].map(s=>`<option value="${esc(s)}">`).join('')}</datalist></div>
+   <div><label class="f">Year / Form</label><select class="inp" id="kGrade">${['Preschool','Year 1','Year 2','Year 3','Year 4','Year 5','Year 6','Form 1','Form 2','Form 3','Form 4','Form 5'].map(g=>`<option>${g}</option>`).join('')}</select></div>
+   <div class="full"><label class="f">Pick-up point *</label><input class="inp" id="kStop" placeholder="e.g. Jalan SS2/24 guardhouse"></div>
+   <div class="full row"><button class="btn btn-p" onclick="addKid()">Add child</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div></div>`);
+}
+function addKid(){
+  if(!need(['kName','kSchool','kStop']))return;
+  S.children.push({id:uid(),parent:me().id,name:fv('kName'),school:fv('kSchool'),grade:fv('kGrade'),stop:fv('kStop'),op:null});
+  save();closeModal();render();toast('Child added');
+}
+function removeKid(id){
+  const k=childById(id);if(!confirm('Remove '+k.name+'?'))return;
+  if(k.op){const o=opById(k.op);if(o)o.taken=Math.max(0,o.taken-1)}
+  S.children=S.children.filter(c=>c.id!==id);S.requests=S.requests.filter(r=>r.child!==id);save();render();
+}
+VIEWS.parent.find=()=>{
+  const q=filters.q.toLowerCase();
+  const list=S.operators.filter(o=>o.status==='approved'&&(!filters.area||o.area===filters.area)&&(!q||o.name.toLowerCase().includes(q)||o.schools.some(s=>s.toLowerCase().includes(q))||o.area.toLowerCase().includes(q)));
+  return `<h1>Find a bus operator</h1><p class="lead">All operators are verified by BasKu.</p>
+  <div class="card"><div class="form" style="grid-template-columns:2fr 1fr">
+    <input class="inp" placeholder="🔍 Search school, area or operator" value="${esc(filters.q)}" oninput="filters.q=this.value;clearTimeout(window._ft);window._ft=setTimeout(()=>{render();const i=document.querySelector('.main .inp');i.focus();i.setSelectionRange(i.value.length,i.value.length)},250)">
+    <select class="inp" onchange="filters.area=this.value;render()"><option value="">All areas</option>${AREAS.map(a=>`<option ${filters.area===a?'selected':''}>${a}</option>`).join('')}</select>
+  </div></div>
+  <div class="grid3" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
+  ${list.length?list.map(o=>{const left=o.seats-o.taken;return `<div class="card" style="margin:0;display:flex;flex-direction:column">
+    <div class="row" style="margin-bottom:10px">${av(o.name)}<div class="grow"><b>${esc(o.name)}</b><small>${esc(o.area)} · ${stars(o.rating)}</small></div></div>
+    <div style="font-size:14px;color:var(--muted);flex:1">🏫 ${o.schools.map(esc).join(', ')}<br>🚐 ${esc(o.vehicle)}</div>
+    <div class="row between" style="margin-top:14px"><div><b style="font-size:20px;color:var(--navy)">RM ${o.fee}</b><small style="color:var(--muted)">/month</small></div>
+    ${left>0?`<span class="badge ${left<4?'b-warn':'b-ok'}">${left} seats left</span>`:'<span class="badge b-bad">Full</span>'}</div>
+    <button class="btn btn-p" style="margin-top:12px" ${left<=0?'disabled':''} onclick="openRequest('${o.id}')">Request a seat</button>
+  </div>`}).join(''):'<div class="card empty" style="grid-column:1/-1">No operators match your search. Try another school or area, or <a href="#" onclick="openEnquiry();return false">send us an enquiry</a>.</div>'}
+  </div>`;
+};
+function openRequest(opId){
+  const o=opById(opId), kids=myKids().filter(k=>!k.op&&!S.requests.some(r=>r.child===k.id&&r.op===opId&&r.status==='pending'));
+  if(!myKids().length){toast('Add a child first');go('parent','kids');return}
+  if(!kids.length){toast('All your children already have a bus or a pending request');return}
+  modal(`<h2>Request a seat</h2><p class="lead">${esc(o.name)} · RM ${o.fee}/month</p>
+   <label class="f">Which child?</label><select class="inp" id="rqKid">${kids.map(k=>`<option value="${k.id}">${esc(k.name)} (${esc(k.school)})</option>`).join('')}</select>
+   <label class="f" style="margin-top:12px">Note to operator</label><textarea class="inp" id="rqNote" placeholder="Session, special needs, etc."></textarea>
+   <div class="row" style="margin-top:16px"><button class="btn btn-p" onclick="sendRequest('${opId}')">Send request</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div>`);
+}
+function sendRequest(opId){
+  const kid=fv('rqKid');
+  S.requests.push({id:uid(),child:kid,op:opId,status:'pending',note:fv('rqNote'),date:new Date().toISOString().slice(0,10)});
+  save();closeModal();toast('Request sent to '+opById(opId).name);go('parent','kids');
+}
+VIEWS.parent.alerts=()=>{
+  const html=`<div class="row between" style="margin-bottom:18px"><h1>Notifications</h1><button class="btn btn-g btn-sm" onclick="markRead()">Mark all read</button></div><div class="card">${notesList()}</div>`;
+  return html;
+};
+function markRead(){S.notes.forEach(n=>{if(n.to===me().id)n.read=true});save();render()}
+
+/* ================= OPERATOR ================= */
+const myOp=()=>opById(me().id);
+const riders=()=>[...S.children.filter(c=>c.op===me().id),...S.roster.filter(r=>r.op===me().id)];
+VIEWS.operator.trip=()=>{
+  const o=myOp(), list=riders(), tr=S.trip, active=tr.active&&tr.op===o.id;
+  const counts={boarded:0,dropped:0,absent:0,waiting:0};list.forEach(k=>counts[tr.status[k.id]||'waiting']++);
+  return `<h1>Today's trip</h1><p class="lead">${esc(o.vehicle)} · ${esc(o.plate)}</p>
+  <div class="card"><div class="row between"><h3 style="margin:0">Morning route</h3>
+    ${active?`<button class="btn btn-bad btn-sm" onclick="endTrip()">End trip</button>`:`<button class="btn btn-ok" onclick="startTrip()">▶ Start trip</button>`}</div>
+    ${routeBar()}
+    ${active?`<div class="row" style="margin-top:4px"><button class="btn btn-o btn-sm" onclick="advance()">Move bus forward →</button><small style="color:var(--muted)">Simulates GPS movement</small></div>`:''}
+  </div>
+  <div class="grid4" style="margin-bottom:18px">
+    <div class="stat"><div class="v">${counts.waiting}</div><div class="l">Waiting</div></div>
+    <div class="stat"><div class="v">${counts.boarded}</div><div class="l">On bus</div></div>
+    <div class="stat"><div class="v">${counts.dropped}</div><div class="l">Arrived</div></div>
+    <div class="stat"><div class="v">${counts.absent}</div><div class="l">Absent</div></div>
+  </div>
+  <div class="card"><h3>👧 Student checklist</h3>
+  ${list.length?list.map(k=>{const st=tr.status[k.id]||'waiting';return `<div class="list-i">${av(k.name)}<div class="grow"><b>${esc(k.name)}</b><small>${esc(k.stop)} → ${esc(k.school)}</small></div>
+    ${active?(st==='waiting'?`<button class="btn btn-ok btn-sm" onclick="mark('${k.id}','boarded')">Board</button><button class="btn btn-bad btn-sm" onclick="mark('${k.id}','absent')">Absent</button>`
+      :st==='boarded'?`<button class="btn btn-n btn-sm" onclick="mark('${k.id}','dropped')">Drop off</button>`:stBadge(st)):stBadge(st)}</div>`}).join(''):'<div class="empty">No students yet.</div>'}
+  ${active&&counts.boarded>0&&tr.progress>=100?'<div class="demo" style="background:#fdeaea;color:var(--bad)">⚠️ The bus has reached school but some children are still marked "On bus". Please check the bus before ending the trip.</div>':''}
+  </div>`;
+};
+function startTrip(){
+  S.trip={op:me().id,active:true,progress:0,status:{}};
+  riders().forEach(k=>{const c=S.children.find(x=>x.id===k.id);if(c)notify(c.parent,`🚌 ${myOp().name} has started the morning trip.`)});
+  save();render();toast('Trip started. Parents notified.');
+}
+function advance(){S.trip.progress=Math.min(100,S.trip.progress+(S.trip.progress<33?33.4:33.3));save();render()}
+function mark(id,st){
+  S.trip.status[id]=st;const k=childById(id), c=S.children.find(x=>x.id===id);
+  if(st==='boarded'&&S.trip.progress<33.4)S.trip.progress=33.4;
+  if(c){const msg={boarded:`✅ ${k.name} boarded the bus at ${k.stop} (${now()}).`,dropped:`🏫 ${k.name} arrived safely at ${k.school} (${now()}).`,absent:`⚠️ ${k.name} was marked absent at ${k.stop}. Contact the driver if this is unexpected.`}[st];notify(c.parent,msg)}
+  save();render();toast(`${k.name}: ${st}`);
+}
+function endTrip(){
+  const left=riders().filter(k=>S.trip.status[k.id]==='boarded');
+  if(left.length){alert('Cannot end trip: '+left.map(k=>k.name).join(', ')+' still on the bus. Drop them off first.');return}
+  S.trip.active=false;S.trip.progress=100;save();render();toast('Trip completed');
+}
+VIEWS.operator.reqs=()=>{
+  const list=S.requests.filter(r=>r.op===me().id).sort((a,b)=>(a.status==='pending'?-1:1));
+  return `<h1>Seat requests</h1><p class="lead">Accept or decline requests from parents.</p><div class="card">
+  ${list.length?list.map(r=>{const k=childById(r.child), p=S.parents.find(x=>x.id===k?.parent);if(!k)return'';return `<div class="list-i">${av(k.name)}<div class="grow"><b>${esc(k.name)} · ${esc(k.grade)}</b><small>${esc(k.school)} · Stop: ${esc(k.stop)}<br>Parent: ${esc(p?.name)} ${esc(p?.phone)}${r.note?`<br>“${esc(r.note)}”`:''}</small></div>
+   ${r.status==='pending'?`<button class="btn btn-ok btn-sm" onclick="decide('${r.id}',true)">Accept</button><button class="btn btn-bad btn-sm" onclick="decide('${r.id}',false)">Decline</button>`:reqBadge(r.status)}</div>`}).join(''):'<div class="empty">No requests yet.</div>'}</div>`;
+};
+function decide(id,ok){
+  const r=S.requests.find(x=>x.id===id), k=childById(r.child), o=myOp();
+  if(ok&&o.taken>=o.seats){toast('No seats left');return}
+  r.status=ok?'accepted':'declined';
+  if(ok){k.op=o.id;o.taken++;S.requests.forEach(x=>{if(x.child===k.id&&x.id!==id&&x.status==='pending')x.status='declined'})}
+  notify(k.parent,ok?`🎉 ${o.name} accepted ${k.name}. Fee: RM ${o.fee}/month.`:`${o.name} could not take ${k.name}. Try another operator.`);
+  save();render();toast(ok?'Request accepted':'Request declined');
+}
+VIEWS.operator.profile=()=>{
+  const o=myOp();
+  return `<h1>Business profile</h1><p class="lead">This is what parents see when they search.</p>
+  <div class="card"><div class="form">
+    <div class="full"><label class="f">Service name</label><input class="inp" id="pName" value="${esc(o.name)}"></div>
+    <div><label class="f">Phone</label><input class="inp" id="pPhone" value="${esc(o.phone)}"></div>
+    <div><label class="f">Monthly fee (RM)</label><input class="inp" id="pFee" type="number" value="${o.fee}"></div>
+    <div class="full"><label class="f">Schools served</label><input class="inp" id="pSchools" value="${esc(o.schools.join(', '))}"></div>
+    <div><label class="f">Vehicle</label><input class="inp" id="pVeh" value="${esc(o.vehicle)}"></div>
+    <div><label class="f">Total seats</label><input class="inp" id="pSeats" type="number" value="${o.seats}"></div>
+    <div class="full"><button class="btn btn-p" onclick="saveProfile()">Save changes</button></div>
+  </div></div>
+  <div class="grid4"><div class="stat"><div class="v">${o.taken}/${o.seats}</div><div class="l">Seats filled</div></div><div class="stat"><div class="v">RM ${o.fee*o.taken}</div><div class="l">Monthly revenue</div></div><div class="stat"><div class="v">${o.rating||'—'}</div><div class="l">Rating</div></div><div class="stat"><div class="v">${opStBadge(o.status)}</div><div class="l">Status</div></div></div>`;
+};
+function saveProfile(){
+  const o=myOp();o.name=fv('pName')||o.name;o.phone=fv('pPhone');o.fee=+fv('pFee')||o.fee;o.schools=fv('pSchools').split(',').map(s=>s.trim()).filter(Boolean);o.vehicle=fv('pVeh');o.seats=Math.max(o.taken,+fv('pSeats')||o.seats);
+  S.user.name=o.name;save();render();toast('Profile saved');
+}
+
+/* ================= ADMIN ================= */
+VIEWS.admin.overview=()=>{
+  const ap=S.operators.filter(o=>o.status==='approved');
+  return `<h1>Admin overview</h1><p class="lead">Platform activity at a glance.</p>
+  <div class="grid4" style="margin-bottom:18px">
+    <div class="stat"><div class="v">${S.parents.length}</div><div class="l">Parents</div></div>
+    <div class="stat"><div class="v">${S.children.length+S.roster.length}</div><div class="l">Students</div></div>
+    <div class="stat"><div class="v">${ap.length}</div><div class="l">Active operators</div></div>
+    <div class="stat"><div class="v">${S.operators.filter(o=>o.status==='pending').length}</div><div class="l">Awaiting approval</div></div>
+  </div>
+  <div class="grid3" style="grid-template-columns:1fr 1fr">
+    <div class="card"><h3>🆕 New enquiries</h3>${S.enquiries.filter(e=>e.status==='new').slice(0,4).map(e=>`<div class="list-i"><div class="grow"><b>${esc(e.name)}</b><small>${esc(e.school)} · ${esc(e.area)}</small></div><span class="badge b-warn">New</span></div>`).join('')||'<div class="empty">All caught up</div>'}</div>
+    <div class="card"><h3>🚌 Seat occupancy</h3>${ap.map(o=>`<div style="margin-bottom:12px"><div class="row between" style="font-size:14px"><span>${esc(o.name)}</span><b>${o.taken}/${o.seats}</b></div><div style="height:8px;background:#e4e7ef;border-radius:4px;margin-top:4px"><div style="height:8px;border-radius:4px;background:${o.taken/o.seats>.9?'var(--warn)':'var(--ok)'};width:${Math.min(100,o.taken/o.seats*100)}%"></div></div></div>`).join('')}</div>
+  </div>`;
+};
+VIEWS.admin.ops=()=>`<h1>Bus operators</h1><p class="lead">Review applications and manage operators.</p>
+  <div class="card tbl-wrap"><table><thead><tr><th>Operator</th><th class="hide-m">Area</th><th class="hide-m">Fee</th><th>Seats</th><th>Status</th><th></th></tr></thead><tbody>
+  ${S.operators.map(o=>`<tr><td><b>${esc(o.name)}</b><br><small style="color:var(--muted)">${esc(o.owner)} · ${esc(o.phone)}</small></td><td class="hide-m">${esc(o.area)}</td><td class="hide-m">RM ${o.fee}</td><td>${o.taken}/${o.seats}</td><td>${opStBadge(o.status)}</td>
+  <td style="white-space:nowrap">${o.status==='pending'?`<button class="btn btn-ok btn-sm" onclick="setOp('${o.id}','approved')">Approve</button> <button class="btn btn-bad btn-sm" onclick="setOp('${o.id}','rejected')">Reject</button>`:o.status==='approved'?`<button class="btn btn-g btn-sm" onclick="setOp('${o.id}','rejected')">Suspend</button>`:`<button class="btn btn-g btn-sm" onclick="setOp('${o.id}','approved')">Reinstate</button>`}</td></tr>`).join('')}
+  </tbody></table></div>`;
+function setOp(id,st){const o=opById(id);o.status=st;save();render();toast(`${o.name}: ${st}`)}
+VIEWS.admin.users=()=>`<h1>Parents &amp; students</h1><p class="lead">Registered families.</p>
+  <div class="card tbl-wrap"><table><thead><tr><th>Parent</th><th class="hide-m">Phone</th><th>Children</th></tr></thead><tbody>
+  ${S.parents.map(p=>`<tr><td><b>${esc(p.name)}</b><br><small style="color:var(--muted)">${esc(p.email)}</small></td><td class="hide-m">${esc(p.phone)}</td><td>${S.children.filter(c=>c.parent===p.id).map(c=>`${esc(c.name)} ${c.op?`<span class="badge b-ok">${esc(opById(c.op)?.name)}</span>`:'<span class="badge b-n">No bus</span>'}`).join('<br>')||'—'}</td></tr>`).join('')}
+  </tbody></table></div>`;
+VIEWS.admin.enq=()=>`<h1>Enquiries</h1><p class="lead">Messages from parents via the landing page.</p>
+  <div class="card">${S.enquiries.map(e=>`<div class="list-i" style="align-items:flex-start"><div class="grow"><b>${esc(e.name)} · ${esc(e.phone)}</b><small>${esc(e.school)}, ${esc(e.area)} · ${e.date}</small>${e.msg?`<div style="font-size:14px;margin-top:4px">${esc(e.msg)}</div>`:''}</div>
+  ${e.status==='new'?`<button class="btn btn-o btn-sm" onclick="doneEnq('${e.id}')">Mark contacted</button>`:'<span class="badge b-ok">Contacted</span>'}</div>`).join('')||'<div class="empty">No enquiries</div>'}</div>`;
+function doneEnq(id){S.enquiries.find(e=>e.id===id).status='contacted';save();render()}
+
+/* ================= nav config ================= */
+const NAVS={
+  parent:[{id:'home',ic:'🏠',label:'Home'},{id:'kids',ic:'👧',label:'My children',short:'Children'},{id:'find',ic:'🔍',label:'Find a bus',short:'Find'},{id:'alerts',ic:'🔔',label:'Notifications',short:'Alerts',badge:unread}],
+  operator:[{id:'trip',ic:'🚌',label:"Today's trip",short:'Trip'},{id:'reqs',ic:'📥',label:'Seat requests',short:'Requests',badge:()=>S.requests.filter(r=>r.op===me().id&&r.status==='pending').length},{id:'profile',ic:'⚙️',label:'Profile'}],
+  admin:[{id:'overview',ic:'📊',label:'Overview'},{id:'ops',ic:'🚌',label:'Operators',badge:()=>S.operators.filter(o=>o.status==='pending').length},{id:'users',ic:'👨‍👩‍👧',label:'Parents',short:'Parents'},{id:'enq',ic:'✉️',label:'Enquiries',badge:()=>S.enquiries.filter(e=>e.status==='new').length}]
+};
+
+/* ================= boot ================= */
+load();
+if(S.user)route=S.user.role;
+render();
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+</script>
+</body>
+</html>
