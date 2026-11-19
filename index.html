@@ -13,16 +13,16 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <style>
 :root{
-  --bg:#f6f7fb; --card:#fff; --ink:#1b2333; --muted:#6b7385; --line:#e4e7ef;
-  --brand:#FF8110; --brand-d:#e86f00; --navy:#16325c; --ok:#1f9d63; --warn:#e0812a; --bad:#d64545;
-  --radius:14px; --shadow:0 4px 18px rgba(22,50,92,.08);
+  --bg:#fffaf5; --card:#fff; --ink:#2b2420; --muted:#7a6e66; --line:#f0e6dc;
+  --brand:#FF8110; --brand-d:#e86f00; --accent:#c25400; --char:#2b2420; --tint:#fff1e4; --ok:#1f9d63; --warn:#e0812a; --bad:#d64545;
+  --radius:14px; --shadow:0 4px 18px rgba(120,60,0,.08);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;border:0;background:none}
-a{color:var(--navy)}
+a{color:var(--accent)}
 .hidden{display:none!important}
 
 /* top bar */
@@ -35,26 +35,26 @@ a{color:var(--navy)}
 .lang{border:1px solid var(--line);border-radius:10px;padding:7px 8px;background:#fff}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border-radius:10px;font-weight:600;transition:.15s;white-space:nowrap}
 .btn-p{background:var(--brand);color:#2a1200}.btn-p:hover{background:var(--brand-d)}
-.btn-n{background:var(--navy);color:#fff}.btn-n:hover{opacity:.92}
-.btn-o{border:1.5px solid var(--navy);color:var(--navy);background:#fff}.btn-o:hover{background:#eef2f9}
+.btn-n{background:var(--char);color:#fff}.btn-n:hover{opacity:.92}
+.btn-o{border:1.5px solid var(--brand);color:var(--accent);background:#fff}.btn-o:hover{background:var(--tint)}
 .btn-g{color:var(--muted)}.btn-g:hover{color:var(--ink)}
 .btn-sm{padding:7px 12px;font-size:14px;border-radius:8px}
 .btn-ok{background:var(--ok);color:#fff}.btn-bad{background:#fdeaea;color:var(--bad)}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 
 /* landing */
-.hero{background:linear-gradient(135deg,#16325c 0%,#24497f 100%);color:#fff;overflow:hidden}
+.hero{background:radial-gradient(1200px 500px at 85% 20%,#ffe2c4 0%,rgba(255,226,196,0) 60%),linear-gradient(180deg,#fff4e8 0%,#fffaf5 100%);color:var(--ink);overflow:hidden;border-bottom:1px solid var(--line)}
+.hero h1 em{font-style:normal;color:var(--brand)}
 .hero .in{max-width:1180px;margin:0 auto;padding:64px 18px 72px;display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
-.pill{display:inline-block;background:rgba(255,129,16,.2);color:#ffb070;font-weight:700;font-size:13px;padding:5px 12px;border-radius:99px;letter-spacing:.3px}
+.pill{display:inline-block;background:var(--tint);color:var(--accent);border:1px solid #ffd3a8;font-weight:700;font-size:13px;padding:5px 12px;border-radius:99px;letter-spacing:.3px}
 .hero h1{font-size:clamp(30px,5vw,52px);line-height:1.1;margin:14px 0 16px;font-weight:800}
-.hero p{font-size:18px;color:#cdd8ea;max-width:520px}
+.hero p{font-size:18px;color:var(--muted);max-width:520px}
 .hero .ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
 .hero .ctas .btn{padding:13px 22px}
-.hero .btn-o{background:transparent;color:#fff;border-color:#fff}
-.hero .btn-o:hover{background:rgba(255,255,255,.1)}
-.hero .link{display:inline-block;margin-top:16px;color:#ffb070;text-decoration:underline;cursor:pointer;background:none}
-.phone{justify-self:center;width:280px;background:#0e1f3a;border-radius:34px;padding:12px;box-shadow:0 30px 60px rgba(0,0,0,.35)}
-.phone .scr{background:#f6f7fb;border-radius:24px;padding:16px;color:var(--ink);min-height:420px}
+.hero .btn-o{background:#fff}
+.hero .link{display:inline-block;margin-top:16px;color:var(--accent);text-decoration:underline;cursor:pointer;background:none}
+.phone{justify-self:center;width:280px;background:var(--brand);border-radius:34px;padding:12px;box-shadow:0 30px 60px rgba(194,84,0,.28)}
+.phone .scr{background:#fffaf5;border-radius:24px;padding:16px;color:var(--ink);min-height:420px}
 .mini-card{background:#fff;border-radius:12px;padding:12px;margin-bottom:10px;box-shadow:var(--shadow);font-size:13px}
 .mini-card b{display:block;font-size:14px}
 .section{max-width:1180px;margin:0 auto;padding:64px 18px}
@@ -68,10 +68,10 @@ a{color:var(--navy)}
 .feat p{color:var(--muted);font-size:15px}
 .steps{counter-reset:s}
 .step{position:relative;padding-left:0}
-.step .num{width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:700;margin-bottom:10px}
+.step .num{width:36px;height:36px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:700;margin-bottom:10px}
 .cta-band{background:var(--brand);border-radius:20px;padding:40px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between}
 .cta-band h2{text-align:left;margin:0;color:#2a1200}
-footer{background:#0e1f3a;color:#9fb0c9;font-size:14px}
+footer{background:var(--char);color:#cbbfb5;font-size:14px}
 footer .in{max-width:1180px;margin:0 auto;padding:28px 18px;display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between}
 
 /* app shell */
@@ -81,8 +81,8 @@ footer .in{max-width:1180px;margin:0 auto;padding:28px 18px;display:flex;flex-wr
 .side .who b{display:block}
 .side .who span{font-size:13px;color:var(--muted)}
 .nav-i{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:10px;color:var(--muted);font-weight:600;text-align:left;margin-bottom:2px}
-.nav-i:hover{background:#f1f3f8;color:var(--ink)}
-.nav-i.on{background:#fff1e4;color:var(--navy)}
+.nav-i:hover{background:#fbf3ea;color:var(--ink)}
+.nav-i.on{background:#fff1e4;color:var(--accent)}
 .nav-i .ic{width:22px;text-align:center}
 .nav-i .badge{margin-left:auto}
 .main{flex:1;padding:26px;max-width:1100px;width:100%;margin:0 auto}
@@ -93,10 +93,10 @@ footer .in{max-width:1180px;margin:0 auto;padding:28px 18px;display:flex;flex-wr
 .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .between{justify-content:space-between}
 .stat{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
-.stat .v{font-size:28px;font-weight:800;color:var(--navy)}
+.stat .v{font-size:28px;font-weight:800;color:var(--accent)}
 .stat .l{color:var(--muted);font-size:14px}
 .badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;white-space:nowrap}
-.b-ok{background:#e3f5ec;color:var(--ok)}.b-warn{background:#fdf0e3;color:var(--warn)}.b-bad{background:#fdeaea;color:var(--bad)}.b-n{background:#e9eef7;color:var(--navy)}.b-y{background:#fff1e4;color:#b85a00}
+.b-ok{background:#e3f5ec;color:var(--ok)}.b-warn{background:#fdf0e3;color:var(--warn)}.b-bad{background:#fdeaea;color:var(--bad)}.b-n{background:#f3ebe3;color:#6b5d52!important;color:var(--accent)}.b-y{background:#fff1e4;color:#b85a00}
 .list-i{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
 .list-i:last-child{border-bottom:0}
 .av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;flex-shrink:0}
@@ -111,10 +111,10 @@ td{padding:12px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
 
 /* route tracker */
 .route{position:relative;height:110px;margin:10px 4px 4px}
-.route .track{position:absolute;left:0;right:0;top:46px;height:6px;background:#e4e7ef;border-radius:3px}
+.route .track{position:absolute;left:0;right:0;top:46px;height:6px;background:#f0e2d4;border-radius:3px}
 .route .fill{position:absolute;left:0;top:46px;height:6px;background:var(--brand);border-radius:3px;transition:width 1s linear}
 .route .stop{position:absolute;top:38px;transform:translateX(-50%);text-align:center;width:90px}
-.route .stop .dot{width:22px;height:22px;border-radius:50%;background:#fff;border:4px solid #c9cfdc;margin:0 auto}
+.route .stop .dot{width:22px;height:22px;border-radius:50%;background:#fff;border:4px solid #e2cdb9;margin:0 auto}
 .route .stop.done .dot{border-color:var(--brand)}
 .route .stop small{display:block;font-size:12px;color:var(--muted);margin-top:6px;line-height:1.2}
 .route .bus{position:absolute;top:6px;transform:translateX(-50%);font-size:28px;transition:left 1s linear}
@@ -124,22 +124,22 @@ td{padding:12px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
 .form .full{grid-column:1/-1}
 label.f{display:block;font-size:14px;font-weight:600;margin-bottom:5px}
 .inp{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;outline:none}
-.inp:focus{border-color:var(--navy)}
+.inp:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(255,129,16,.15)}
 textarea.inp{min-height:90px;resize:vertical}
 .err{color:var(--bad);font-size:13px;margin-top:4px}
 
 /* modal + toast */
-.ov{position:fixed;inset:0;background:rgba(14,31,58,.55);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
+.ov{position:fixed;inset:0;background:rgba(43,36,32,.55);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
 .modal{background:#fff;border-radius:18px;width:100%;max-width:520px;max-height:92vh;overflow:auto;padding:24px}
 .modal h2{font-size:21px;margin-bottom:4px}
 .modal .lead{color:var(--muted);margin-bottom:18px;font-size:15px}
-.tabs{display:flex;background:#f1f3f8;border-radius:10px;padding:4px;margin-bottom:18px}
+.tabs{display:flex;background:#f6ede4;border-radius:10px;padding:4px;margin-bottom:18px}
 .tabs button{flex:1;padding:9px;border-radius:8px;font-weight:600;color:var(--muted);font-size:14px}
-.tabs button.on{background:#fff;color:var(--navy);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.tabs button.on{background:#fff;color:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.08)}
 .toasts{position:fixed;right:16px;bottom:16px;z-index:60;display:flex;flex-direction:column;gap:8px;max-width:340px}
-.toast{background:var(--navy);color:#fff;padding:12px 16px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.2);font-size:14px;animation:tin .25s}
+.toast{background:var(--char);color:#fff;padding:12px 16px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.2);font-size:14px;animation:tin .25s}
 @keyframes tin{from{opacity:0;transform:translateY(10px)}}
-.demo{background:#f1f3f8;border-radius:10px;padding:10px 12px;font-size:13px;color:var(--muted);margin-top:14px}
+.demo{background:#fbf3ea;border-radius:10px;padding:10px 12px;font-size:13px;color:var(--muted);margin-top:14px}
 
 /* mobile */
 .bnav{display:none}
@@ -153,7 +153,7 @@ textarea.inp{min-height:90px;resize:vertical}
   .bnav{display:flex;position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);z-index:40;padding-bottom:env(safe-area-inset-bottom)}
   .bnav button{flex:1;padding:8px 2px 10px;font-size:11px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;position:relative}
   .bnav button .ic{font-size:20px}
-  .bnav button.on{color:var(--navy)}
+  .bnav button.on{color:var(--accent)}
   .bnav .dotb{position:absolute;top:6px;right:calc(50% - 16px);width:8px;height:8px;border-radius:50%;background:var(--bad)}
   .form{grid-template-columns:1fr}
   .cta-band{padding:28px}
@@ -228,7 +228,7 @@ const t=k=>(T[lang]&&T[lang][k])||T.en[k]||k;
 function setLang(l){lang=l;save();render()}
 
 /* ================= state ================= */
-const COLORS=['#16325c','#1f9d63','#e0812a','#7a4fd1','#d64545','#0f8ab4','#b85a00'];
+const COLORS=['#ff8110','#c25400','#e0a100','#d9622b','#8a5a3c','#1f9d63','#b8452f'];
 const initials=n=>n.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
 const uid=()=>Math.random().toString(36).slice(2,9);
 const now=()=>new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
@@ -282,7 +282,7 @@ function render(){
   const a=document.getElementById('authArea');
   if(me()){
     a.innerHTML=`<div class="row"><button class="btn btn-o btn-sm" onclick="go('${me().role}')"><span>🏠</span><span class="btn-label">Dashboard</span></button><button class="btn btn-g btn-sm" onclick="logout()">${t('logout')}</button></div>`;
-  } else a.innerHTML=`<button class="btn btn-n btn-sm" onclick="openLogin()">${t('login')}</button>`;
+  } else a.innerHTML=`<button class="btn btn-p btn-sm" onclick="openLogin()">${t('login')}</button>`;
   const v=document.getElementById('view'), bn=document.getElementById('bnav');
   if(route==='landing'){v.innerHTML=landing();bn.innerHTML='';bn.style.display='none';return}
   bn.style.display='';
@@ -303,7 +303,7 @@ function landing(){
   <section class="hero"><div class="in">
     <div>
       <span class="pill">🇲🇾 ${t('tag')}</span>
-      <h1>${t('h1')}</h1>
+      <h1>${t('h1').replace(/(trust|dipercayai|放心)/,'<em>$1</em>')}</h1>
       <p>${t('hp')}</p>
       <div class="ctas">
         <button class="btn btn-p" onclick="openEnquiry()">${t('parent')}</button>
@@ -312,8 +312,8 @@ function landing(){
       <button class="link" onclick="openSignup('parent')">${t('search')} →</button>
     </div>
     <div class="phone" aria-hidden="true"><div class="scr">
-      <div style="font-weight:800;color:var(--navy);margin-bottom:10px">Good morning, Aisyah 👋</div>
-      <div class="mini-card"><b>🚌 Bus is 4 min away</b>Ahmad Transport · WXY 2231<div style="height:6px;background:#e4e7ef;border-radius:3px;margin-top:8px"><div style="width:68%;height:6px;background:var(--brand);border-radius:3px"></div></div></div>
+      <div style="font-weight:800;color:var(--accent);margin-bottom:10px">Good morning, Aisyah 👋</div>
+      <div class="mini-card"><b>🚌 Bus is 4 min away</b>Ahmad Transport · WXY 2231<div style="height:6px;background:#f0e2d4;border-radius:3px;margin-top:8px"><div style="width:68%;height:6px;background:var(--brand);border-radius:3px"></div></div></div>
       <div class="mini-card"><b>✅ Adam boarded</b>07:02 · Jalan SS2/24</div>
       <div class="mini-card"><b>🏫 Arrived at school</b>07:24 · SK Taman Megah</div>
       <div class="mini-card"><b>💳 November fee paid</b>RM 180.00</div>
@@ -342,7 +342,7 @@ function landing(){
     </div>
   </section>
 
-  <footer><div class="in"><span style="display:flex;align-items:center;gap:14px"><img src="${LOGO_W}" alt="Onboard" style="height:22px"> © 2026 Onboard</span><span><a style="color:#9fb0c9;cursor:pointer" onclick="openLogin('admin')">Admin login</a></span></div></footer>`;
+  <footer><div class="in"><span style="display:flex;align-items:center;gap:14px"><img src="${LOGO_W}" alt="Onboard" style="height:22px"> © 2026 Onboard</span><span><a style="color:#cbbfb5;cursor:pointer" onclick="openLogin('admin')">Admin login</a></span></div></footer>`;
 }
 
 /* ================= modals ================= */
@@ -527,7 +527,7 @@ VIEWS.parent.find=()=>{
   ${list.length?list.map(o=>{const left=o.seats-o.taken;return `<div class="card" style="margin:0;display:flex;flex-direction:column">
     <div class="row" style="margin-bottom:10px">${av(o.name)}<div class="grow"><b>${esc(o.name)}</b><small>${esc(o.area)} · ${stars(o.rating)}</small></div></div>
     <div style="font-size:14px;color:var(--muted);flex:1">🏫 ${o.schools.map(esc).join(', ')}<br>🚐 ${esc(o.vehicle)}</div>
-    <div class="row between" style="margin-top:14px"><div><b style="font-size:20px;color:var(--navy)">RM ${o.fee}</b><small style="color:var(--muted)">/month</small></div>
+    <div class="row between" style="margin-top:14px"><div><b style="font-size:20px;color:var(--accent)">RM ${o.fee}</b><small style="color:var(--muted)">/month</small></div>
     ${left>0?`<span class="badge ${left<4?'b-warn':'b-ok'}">${left} seats left</span>`:'<span class="badge b-bad">Full</span>'}</div>
     <button class="btn btn-p" style="margin-top:12px" ${left<=0?'disabled':''} onclick="openRequest('${o.id}')">Request a seat</button>
   </div>`}).join(''):'<div class="card empty" style="grid-column:1/-1">No operators match your search. Try another school or area, or <a href="#" onclick="openEnquiry();return false">send us an enquiry</a>.</div>'}
@@ -640,7 +640,7 @@ VIEWS.admin.overview=()=>{
   </div>
   <div class="grid3" style="grid-template-columns:1fr 1fr">
     <div class="card"><h3>🆕 New enquiries</h3>${S.enquiries.filter(e=>e.status==='new').slice(0,4).map(e=>`<div class="list-i"><div class="grow"><b>${esc(e.name)}</b><small>${esc(e.school)} · ${esc(e.area)}</small></div><span class="badge b-warn">New</span></div>`).join('')||'<div class="empty">All caught up</div>'}</div>
-    <div class="card"><h3>🚌 Seat occupancy</h3>${ap.map(o=>`<div style="margin-bottom:12px"><div class="row between" style="font-size:14px"><span>${esc(o.name)}</span><b>${o.taken}/${o.seats}</b></div><div style="height:8px;background:#e4e7ef;border-radius:4px;margin-top:4px"><div style="height:8px;border-radius:4px;background:${o.taken/o.seats>.9?'var(--warn)':'var(--ok)'};width:${Math.min(100,o.taken/o.seats*100)}%"></div></div></div>`).join('')}</div>
+    <div class="card"><h3>🚌 Seat occupancy</h3>${ap.map(o=>`<div style="margin-bottom:12px"><div class="row between" style="font-size:14px"><span>${esc(o.name)}</span><b>${o.taken}/${o.seats}</b></div><div style="height:8px;background:#f0e2d4;border-radius:4px;margin-top:4px"><div style="height:8px;border-radius:4px;background:${o.taken/o.seats>.9?'var(--warn)':'var(--ok)'};width:${Math.min(100,o.taken/o.seats*100)}%"></div></div></div>`).join('')}</div>
   </div>`;
 };
 VIEWS.admin.ops=()=>`<h1>Bus operators</h1><p class="lead">Review applications and manage operators.</p>
