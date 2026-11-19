@@ -37,36 +37,36 @@ const T = {
       hp:"Our mission: to make sure no child is ever forgotten. Peace of mind on every journey, for parents, drivers and bus operators.",
       parent:"Parents Sign Up",op:"Bus Operator Sign Up",driver:"Bus driver? Log in here",
       featT:"One app, three parties",featS:"Everyone on the school run stays in sync.",
-      f1:"For parents",f1d:"Follow the bus live, get a message when your child boards and arrives, tell the driver about absences and pay fees.",
+      f1:"For parents",f1d:"Follow the bus live, get a message when your child boards and arrives, and tell the driver when they're not riding.",
       f2:"For drivers",f2d:"A simple stop-by-stop checklist. Tick each child on and off, and the app won't let a trip end until every seat is checked.",
-      f3:"For bus operators",f3d:"Manage buses, drivers, routes and students, watch every trip live and keep track of monthly fees.",
+      f3:"For bus operators",f3d:"Manage buses, drivers, routes and students, and watch every trip live.",
       howT:"How it works",ctaT:"Ready for stress-free school runs?",start:"Get started",
       s1:"Operator sets up",s1d:"The operator adds buses, drivers and routes in the Onboard portal.",
-      s2:"Parent joins",s2d:"Parents sign up, add their children and request a seat.",
+      s2:"Parent joins",s2d:"The operator adds each child. Parents sign up with the same email and see them straight away.",
       s3:"Driver runs the trip",s3d:"The driver ticks each child on and off at every stop.",
       s4:"Everyone knows",s4d:"Parents and the operator see each step as it happens."},
   bm:{login:"Log Masuk",logout:"Log Keluar",tag:"Aplikasi bas sekolah #1 di Malaysia",h1:"Menaiki bas sekolah tidak akan sama lagi",
       hp:"Misi kami: memastikan tiada anak yang dilupakan. Tenang setiap perjalanan, untuk ibu bapa, pemandu dan pengendali bas.",
       parent:"Daftar Ibu Bapa",op:"Daftar Pengendali Bas",driver:"Pemandu bas? Log masuk di sini",
       featT:"Satu aplikasi, tiga pihak",featS:"Semua yang terlibat sentiasa dimaklumkan.",
-      f1:"Untuk ibu bapa",f1d:"Jejak bas secara langsung, terima mesej bila anak naik dan tiba, maklumkan ketidakhadiran dan bayar yuran.",
+      f1:"Untuk ibu bapa",f1d:"Jejak bas secara langsung, terima mesej bila anak naik dan tiba, dan maklumkan pemandu bila anak tidak naik.",
       f2:"Untuk pemandu",f2d:"Senarai semak ikut hentian. Tanda setiap anak naik dan turun, dan perjalanan tidak boleh tamat selagi bas belum disemak.",
-      f3:"Untuk pengendali bas",f3d:"Urus bas, pemandu, laluan dan murid, pantau setiap perjalanan dan jejak yuran bulanan.",
+      f3:"Untuk pengendali bas",f3d:"Urus bas, pemandu, laluan dan murid, dan pantau setiap perjalanan secara langsung.",
       howT:"Cara ia berfungsi",ctaT:"Sedia untuk perjalanan ke sekolah tanpa risau?",start:"Mula sekarang",
       s1:"Pengendali sediakan",s1d:"Pengendali tambah bas, pemandu dan laluan dalam portal Onboard.",
-      s2:"Ibu bapa sertai",s2d:"Ibu bapa daftar, tambah anak dan mohon tempat.",
+      s2:"Ibu bapa sertai",s2d:"Pengendali tambah setiap anak. Ibu bapa daftar dengan e-mel yang sama dan terus nampak anak mereka.",
       s3:"Pemandu jalankan perjalanan",s3d:"Pemandu tanda setiap anak naik dan turun di setiap hentian.",
       s4:"Semua tahu",s4d:"Ibu bapa dan pengendali nampak setiap langkah serta-merta."},
   cn:{login:"登录",logout:"退出",tag:"马来西亚第一校车应用",h1:"搭校车从此不一样",
       hp:"我们的使命：确保没有孩子被遗忘。让家长、司机和校车业者每一程都安心。",
       parent:"家长注册",op:"校车业者注册",driver:"校车司机？在此登录",
       featT:"一个应用，三方连接",featS:"接送过程中的每个人都同步掌握。",
-      f1:"家长",f1d:"实时追踪校车，孩子上车和抵达时收到通知，告知缺席并缴付车费。",
+      f1:"家长",f1d:"实时追踪校车，孩子上车和抵达时收到通知，并在孩子不搭车时告知司机。",
       f2:"司机",f2d:"按站点的简单清单。为每个孩子标记上下车，检查完所有座位前无法结束行程。",
-      f3:"校车业者",f3d:"管理校车、司机、路线和学生，实时查看每趟行程并追踪月费。",
+      f3:"校车业者",f3d:"管理校车、司机、路线和学生，并实时查看每趟行程。",
       howT:"如何运作",ctaT:"准备好轻松上学了吗？",start:"立即开始",
       s1:"业者设置",s1d:"业者在 Onboard 管理平台添加校车、司机和路线。",
-      s2:"家长加入",s2d:"家长注册、添加孩子并申请座位。",
+      s2:"家长加入",s2d:"业者添加每位孩子，家长用相同电邮注册即可看到孩子。",
       s3:"司机出车",s3d:"司机在每个站点为孩子标记上下车。",
       s4:"大家都知道",s4d:"家长和业者即时看到每一步。"}
 };
@@ -76,7 +76,7 @@ const t = k => (T[lang] && T[lang][k]) || T.en[k] || k;
 function setLang(l) { lang = l; try { localStorage.setItem('onboard_lang', l); } catch (e) {} render(); }
 
 /* ================= routing ================= */
-let route = 'landing', tab = null, filters = { q: '' }, openRoute = null;
+let route = 'landing', tab = null, openRoute = null;
 function go(r, tb) { route = r; tab = tb || null; window.scrollTo(0, 0); render(); }
 window.onSync = () => render();
 const me = () => USER;
@@ -85,8 +85,6 @@ const NAVS = {
   parent: [
     { id: 'home', ic: '🏠', label: 'Home' },
     { id: 'kids', ic: '👧', label: 'My children', short: 'Children' },
-    { id: 'find', ic: '🔍', label: 'Find a bus', short: 'Find' },
-    { id: 'pay', ic: '💳', label: 'Payments', badge: () => myInvoices().filter(i => i.status === 'unpaid').length },
     { id: 'alerts', ic: '🔔', label: 'Notifications', short: 'Alerts', badge: () => unreadFor(me().id) }
   ],
   driver: [
@@ -139,7 +137,7 @@ function landing() {
       <div class="mini-card"><b>🚌 Bus is 4 min away</b>Faizal · WXY 2231<div class="prog" style="margin-top:8px;height:6px"><div style="width:68%"></div></div></div>
       <div class="mini-card"><b>✅ Adam boarded</b>06:47 · Jalan SS2/24</div>
       <div class="mini-card"><b>🏫 Adam arrived at school</b>07:19 · SK Taman Megah</div>
-      <div class="mini-card"><b>💳 Fee paid</b>RM 180 · Ahmad Transport</div>
+      <div class="mini-card"><b>🏠 Adam dropped home</b>13:50 · Jalan SS2/24</div>
     </div></div>
   </div></section>
 
@@ -202,7 +200,7 @@ function doLogin() {
 function logout() { setUser(null); go('landing'); }
 
 function openSignup() {
-  modal(`<h2>Sign up as parent</h2><p class="lead">Free for parents. Track trips, report absences and pay fees in one place.</p>
+  modal(`<h2>Sign up as parent</h2><p class="lead">Use the email you gave your bus operator, so your children appear straight away.</p>
   <div class="form">
     <div class="full"><label class="f" for="sName">Name *</label><input class="inp" id="sName" placeholder="Enter your name"></div>
     <div class="full"><label class="f" for="sEmail">Email *</label><input class="inp" id="sEmail" type="email" placeholder="Enter your email"></div>
@@ -216,11 +214,15 @@ function openSignup() {
 function doSignup() {
   if (!need(['sName', 'sEmail', 'sPhone', 'sPass'])) return;
   if (fv('sPass').length < 8) { toast('Password needs at least 8 characters'); return; }
-  if (S.parents.some(p => p.email.toLowerCase() === fv('sEmail').toLowerCase())) { toast('That email is already registered'); return; }
-  const p = { id: uid(), name: fv('sName'), email: fv('sEmail'), gender: fv('sGender'), phone: '+60 ' + fv('sPhone') };
-  S.parents.push(p); notify(p.id, 'Welcome to Onboard! Add your children, then find a bus operator.'); save();
+  const existing = S.parents.find(p => p.email.toLowerCase() === fv('sEmail').toLowerCase());
+  if (existing && !existing.invited) { toast('That email is already registered. Log in instead.'); return; }
+  const p = existing || { id: uid() };
+  Object.assign(p, { name: fv('sName'), email: fv('sEmail'), gender: fv('sGender'), phone: '+60 ' + fv('sPhone'), invited: false });
+  if (!existing) S.parents.push(p);
+  const n = S.children.filter(c => c.parent === p.id).length;
+  notify(p.id, n ? `Welcome to Onboard! Your bus operator has already added ${n} child${n > 1 ? 'ren' : ''}.` : 'Welcome to Onboard! Your children will appear here once your bus operator adds them with this email.'); save();
   setUser({ role: 'parent', id: p.id, name: p.name });
-  closeModal(); go('parent', 'kids'); toast('Account created');
+  closeModal(); go('parent'); toast('Account created');
 }
 
 /* ================= shared bits ================= */
@@ -243,7 +245,6 @@ function timeline(r, trip, highlightStop, tagText) {
 
 /* ================= PARENT ================= */
 const myKids = () => S.children.filter(c => c.parent === me().id);
-const myInvoices = () => S.invoices.filter(i => myKids().some(k => k.id === i.child));
 
 function currentRouteFor(k) {
   const rs = k.routes.map(id => by(S.routes, id)).filter(Boolean);
@@ -257,10 +258,8 @@ function currentRouteFor(k) {
 
 VIEWS.parent.home = () => {
   const kids = myKids(), riding = kids.filter(k => k.op && k.routes.length);
-  const unpaid = myInvoices().filter(i => i.status === 'unpaid');
   return `<h1>Hi, ${esc(me().name.split(' ')[0])} 👋</h1><p class="lead">Here's today's school run.</p>
-  ${unpaid.length ? `<div class="card row between" style="border-left:4px solid var(--brand)"><div><b>${unpaid.length} unpaid fee${unpaid.length > 1 ? 's' : ''}</b><div style="color:var(--muted);font-size:14px">${rm(unpaid.reduce((s, i) => s + i.amount, 0))} due</div></div><button class="btn btn-p btn-sm" onclick="go('parent','pay')">Pay now</button></div>` : ''}
-  ${riding.length ? riding.map(trackCard).join('') : `<div class="card"><h3>No bus yet</h3><p class="lead" style="margin:0 0 14px">Find an operator for your child's school to start tracking trips.</p><button class="btn btn-p" onclick="go('parent','find')">Find a bus</button></div>`}
+  ${riding.length ? riding.map(trackCard).join('') : kids.length ? `<div class="card"><h3>No trips yet</h3><p class="lead" style="margin:0">Your bus operator hasn't put ${kids.length > 1 ? 'your children' : esc(kids[0].name)} on a route yet.</p></div>` : `<div class="card"><h3>No children yet</h3><p class="lead" style="margin:0">Your bus operator adds your children. Ask them to use your email, <b>${esc(by(S.parents, me().id)?.email)}</b>, and they'll appear here.</p></div>`}
   <div class="card"><div class="row between"><h3 style="margin:0">🔔 Latest updates</h3><button class="btn btn-g btn-sm" onclick="go('parent','alerts')">See all</button></div>
   ${notesFor(me().id).slice(0, 4).map(x => `<div class="list-i"><div class="grow"><b style="white-space:normal;font-weight:${x.read ? 500 : 700}">${esc(x.text)}</b><small>${x.time}</small></div></div>`).join('') || '<div class="empty">No updates yet</div>'}</div>`;
 };
@@ -308,105 +307,25 @@ function saveAbsence(kid) {
 
 VIEWS.parent.kids = () => {
   const kids = myKids();
-  return `<div class="row between" style="margin-bottom:18px"><div><h1>My children</h1><p class="lead" style="margin:0">Profiles, bus and planned absences.</p></div><button class="btn btn-p" onclick="openAddKid()">+ Add child</button></div>
+  return `<h1>My children</h1><p class="lead">Added by your bus operator. Contact them to change routes or stops.</p>
   ${kids.length ? kids.map(k => {
-    const req = S.requests.find(r => r.child === k.id && r.status === 'pending'), op = by(S.operators, k.op);
-    const abs = S.absences.filter(a => a.child === k.id && a.date >= today());
-    return `<div class="card"><div class="row">${av(k.name, 48)}<div class="grow"><b style="font-size:17px">${esc(k.name)}</b><small>${esc(k.grade)} · ${esc(k.school)}</small></div>
-      <button class="btn btn-g btn-sm" title="Remove" aria-label="Remove ${esc(k.name)}" onclick="removeKid('${k.id}')">✕</button></div>
+    const op = by(S.operators, k.op), abs = S.absences.filter(a => a.child === k.id && a.date >= today());
+    return `<div class="card"><div class="row">${av(k.name, 48)}<div class="grow"><b style="font-size:17px">${esc(k.name)}</b><small>${esc(k.grade)} · ${esc(k.school)}</small></div></div>
       <div style="margin-top:14px;font-size:14px;display:grid;gap:6px">
         <div>📍 Pick-up / drop-off: <b>${esc(k.stop)}</b></div>
-        <div>🚌 ${op ? `<b>${esc(op.name)}</b> · ${k.routes.map(id => `<span class="chip">${esc(by(S.routes, id)?.name || '')}</span>`).join('') || 'awaiting route'}` : req ? `<span class="badge b-warn">Request sent to ${esc(by(S.operators, req.op)?.name)}</span>` : `No bus yet · <a href="#" onclick="filters.q='${esc(k.school)}';go('parent','find');return false">Find a bus</a>`}</div>
+        <div>🚌 ${op ? `<b>${esc(op.name)}</b> · ${k.routes.map(id => `<span class="chip">${esc(by(S.routes, id)?.name || '')}</span>`).join('') || 'no route yet'}` : 'Not on a bus'}</div>
+        ${op ? `<div>📞 Operator: <a href="tel:${esc(op.phone.replace(/\s/g, ''))}">${esc(op.phone)}</a></div>` : ''}
         ${abs.map(a => `<div>📅 Not riding ${a.date === today() ? 'today' : 'tomorrow'}${a.session === 'ALL' ? '' : a.session === 'AM' ? ' (morning)' : ' (afternoon)'} <button class="btn btn-g btn-sm" onclick="undoAbsence('${a.id}')">Undo</button></div>`).join('')}
       </div>
-      ${k.op ? `<div style="margin-top:12px"><button class="btn btn-o btn-sm" onclick="openAbsence('${k.id}')">Report absence</button></div>` : ''}
+      ${k.routes.length ? `<div style="margin-top:12px"><button class="btn btn-o btn-sm" onclick="openAbsence('${k.id}')">Report absence</button></div>` : ''}
     </div>`;
-  }).join('') : '<div class="card empty">No children added yet.</div>'}`;
+  }).join('') : `<div class="card empty">No children yet. Your bus operator adds them using your email, <b>${esc(by(S.parents, me().id)?.email)}</b>.</div>`}`;
 };
 function undoAbsence(id) {
   const a = S.absences.find(x => x.id === id), k = by(S.children, a.child);
   S.absences = S.absences.filter(x => x.id !== id);
   k.routes.forEach(rid => { const r = by(S.routes, rid); if (r) notify(r.driver, `✅ ${k.name} WILL ride ${a.date === today() ? 'today' : 'tomorrow'} after all.`); });
   save(); render(); toast('Absence removed. Driver told.');
-}
-function openAddKid() {
-  modal(`<h2>Add child</h2><p class="lead">We use this to match your child with a bus.</p><div class="form">
-   <div class="full"><label class="f" for="kName">Child's name *</label><input class="inp" id="kName"></div>
-   <div><label class="f" for="kSchool">School *</label><input class="inp" id="kSchool" list="schoolList"><datalist id="schoolList">${[...new Set(S.operators.flatMap(o => o.schools))].map(s => `<option value="${esc(s)}">`).join('')}</datalist></div>
-   <div><label class="f" for="kGrade">Year / Form</label><select class="inp" id="kGrade">${['Preschool', 'Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6', 'Form 1', 'Form 2', 'Form 3', 'Form 4', 'Form 5'].map(g => `<option>${g}</option>`).join('')}</select></div>
-   <div class="full"><label class="f" for="kStop">Pick-up point *</label><input class="inp" id="kStop" placeholder="e.g. Jalan SS2/24 guardhouse"></div>
-   <div class="full row"><button class="btn btn-p" onclick="addKid()">Add child</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div></div>`);
-}
-function addKid() {
-  if (!need(['kName', 'kSchool', 'kStop'])) return;
-  S.children.push({ id: uid(), parent: me().id, name: fv('kName'), school: fv('kSchool'), grade: fv('kGrade'), stop: fv('kStop'), op: null, routes: [] });
-  save(); closeModal(); render(); toast('Child added');
-}
-function removeKid(id) {
-  const k = by(S.children, id); if (!confirm('Remove ' + k.name + '? Your operator will be told.')) return;
-  if (k.op) notify(k.op, `${by(S.parents, k.parent).name} removed ${k.name} from Onboard.`);
-  S.children = S.children.filter(c => c.id !== id); S.requests = S.requests.filter(r => r.child !== id);
-  save(); render();
-}
-
-VIEWS.parent.find = () => {
-  const q = filters.q.toLowerCase();
-  const list = S.operators.filter(o => o.status === 'approved' && (!q || o.name.toLowerCase().includes(q) || o.area.toLowerCase().includes(q) || o.schools.some(s => s.toLowerCase().includes(q))));
-  return `<h1>Find a bus operator</h1><p class="lead">Search by your child's school or your area.</p>
-  <div class="card"><input class="inp" id="findQ" placeholder="🔍 School, area or operator name" value="${esc(filters.q)}" oninput="filters.q=this.value;clearTimeout(window._ft);window._ft=setTimeout(()=>{render();const i=document.getElementById('findQ');i.focus();i.setSelectionRange(i.value.length,i.value.length)},250)"></div>
-  <div class="grid3" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
-  ${list.length ? list.map(o => {
-    const nb = S.buses.filter(b => b.op === o.id), seats = nb.reduce((s, b) => s + b.seats, 0), taken = S.children.filter(c => c.op === o.id).length;
-    const left = seats ? seats - taken : null;
-    return `<div class="card" style="margin:0;display:flex;flex-direction:column">
-    <div class="row" style="margin-bottom:10px">${av(o.name)}<div class="grow"><b>${esc(o.name)}</b><small>${esc(o.area)} · ⭐ ${o.rating || 'New'}</small></div></div>
-    <div style="font-size:14px;color:var(--muted);flex:1">🏫 ${o.schools.map(esc).join(', ')}<br>🚐 ${nb.length || '—'} vehicle${nb.length === 1 ? '' : 's'} · ${S.drivers.filter(d => d.op === o.id).length} drivers</div>
-    <div class="row between" style="margin-top:14px"><div><b style="font-size:20px;color:var(--accent)">${rm(o.fee)}</b><small style="color:var(--muted)">/month</small></div>
-    ${left === null ? '<span class="badge b-n">Ask for seats</span>' : left > 0 ? `<span class="badge ${left < 4 ? 'b-warn' : 'b-ok'}">${left} seats left</span>` : '<span class="badge b-bad">Full</span>'}</div>
-    <button class="btn btn-p" style="margin-top:12px" ${left !== null && left <= 0 ? 'disabled' : ''} onclick="openRequest('${o.id}')">Request a seat</button></div>`;
-  }).join('') : '<div class="card empty" style="grid-column:1/-1">No operators match your search yet.</div>'}</div>`;
-};
-function openRequest(opId) {
-  const o = by(S.operators, opId);
-  if (!myKids().length) { toast('Add a child first'); go('parent', 'kids'); return; }
-  const kids = myKids().filter(k => !k.op && !S.requests.some(r => r.child === k.id && r.status === 'pending'));
-  if (!kids.length) { toast('All your children already have a bus or a pending request'); return; }
-  modal(`<h2>Request a seat</h2><p class="lead">${esc(o.name)} · ${rm(o.fee)}/month</p>
-   <label class="f" for="rqKid">Which child?</label><select class="inp" id="rqKid">${kids.map(k => `<option value="${k.id}">${esc(k.name)} (${esc(k.school)})</option>`).join('')}</select>
-   <label class="f" for="rqNote" style="margin-top:12px">Note to operator</label><textarea class="inp" id="rqNote" placeholder="Morning, afternoon or both? Anything the driver should know?"></textarea>
-   <div class="row" style="margin-top:16px"><button class="btn btn-p" onclick="sendRequest('${opId}')">Send request</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div>`);
-}
-function sendRequest(opId) {
-  const kid = fv('rqKid'), k = by(S.children, kid);
-  S.requests.push({ id: uid(), child: kid, op: opId, status: 'pending', note: fv('rqNote'), date: today() });
-  notify(opId, `🆕 ${me().name} requested a seat for ${k.name} (${k.school}).`);
-  save(); closeModal(); toast('Request sent to ' + by(S.operators, opId).name); go('parent', 'kids');
-}
-
-VIEWS.parent.pay = () => {
-  const inv = myInvoices().slice().sort((a, b) => (a.status === 'unpaid' ? -1 : 1) - (b.status === 'unpaid' ? -1 : 1) || b.month.localeCompare(a.month));
-  const due = inv.filter(i => i.status === 'unpaid').reduce((s, i) => s + i.amount, 0);
-  return `<h1>Payments</h1><p class="lead">Monthly school bus fees.</p>
-  <div class="grid4" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:18px">
-    <div class="stat"><div class="v">${rm(due)}</div><div class="l">Outstanding</div></div>
-    <div class="stat"><div class="v">${rm(inv.filter(i => i.status === 'paid').reduce((s, i) => s + i.amount, 0))}</div><div class="l">Paid so far</div></div>
-  </div>
-  <div class="card">${inv.length ? inv.map(i => { const k = by(S.children, i.child), o = by(S.operators, i.op); return `<div class="list-i">${av(k.name)}<div class="grow"><b>${esc(k.name)} · ${fmtMonth(i.month)}</b><small>${esc(o?.name)} · ${rm(i.amount)}${i.paidOn ? ' · paid ' + i.paidOn : ''}</small></div>
-    ${i.status === 'unpaid' ? `<button class="btn btn-p btn-sm" onclick="openPay('${i.id}')">Pay</button>` : '<span class="badge b-ok">Paid</span>'}</div>`; }).join('') : '<div class="empty">No bills yet. They appear once your child has a seat.</div>'}</div>`;
-};
-function openPay(id) {
-  const i = S.invoices.find(x => x.id === id), k = by(S.children, i.child);
-  modal(`<h2>Pay ${rm(i.amount)}</h2><p class="lead">${esc(k.name)} · ${fmtMonth(i.month)} · ${esc(by(S.operators, i.op)?.name)}</p>
-  <label class="f" for="payM">Pay with</label><select class="inp" id="payM"><option>FPX online banking</option><option>Touch 'n Go eWallet</option><option>DuitNow QR</option><option>Credit / debit card</option></select>
-  <div class="demo">Demo only: no real payment is made. In the live app this opens the payment gateway.</div>
-  <div class="row" style="margin-top:16px"><button class="btn btn-p" onclick="doPay('${id}')">Confirm payment</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div>`);
-}
-function doPay(id) {
-  const i = S.invoices.find(x => x.id === id), k = by(S.children, i.child);
-  i.status = 'paid'; i.paidOn = today(); i.method = fv('payM');
-  notify(i.op, `💳 ${me().name} paid ${rm(i.amount)} for ${k.name} (${fmtMonth(i.month)}).`);
-  notify(me().id, `💳 Payment received: ${rm(i.amount)} for ${k.name}, ${fmtMonth(i.month)}.`);
-  save(); closeModal(); render(); toast('Payment successful');
 }
 VIEWS.parent.alerts = notesView;
 

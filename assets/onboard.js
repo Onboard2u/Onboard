@@ -9,13 +9,10 @@ const COLORS = ['#ff8110', '#c25400', '#e0a100', '#d9622b', '#8a5a3c', '#1f9d63'
 const uid = () => Math.random().toString(36).slice(2, 9);
 const today = () => new Date().toISOString().slice(0, 10);
 const tomorrow = () => new Date(Date.now() + 864e5).toISOString().slice(0, 10);
-const thisMonth = () => today().slice(0, 7);
 const nowTime = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const initials = n => String(n || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
 const av = (name, size) => `<div class="av" style="background:${COLORS[(String(name).charCodeAt(0) || 0) % COLORS.length]}${size ? `;width:${size}px;height:${size}px;font-size:${size / 2.6}px` : ''}">${initials(name)}</div>`;
-const rm = n => 'RM ' + Number(n || 0).toLocaleString('en-MY', { minimumFractionDigits: 0 });
-const fmtMonth = m => new Date(m + '-01').toLocaleDateString('en-MY', { month: 'long', year: 'numeric' });
 const fv = id => (document.getElementById(id)?.value || '').trim();
 const by = (list, id) => list.find(x => x.id === id);
 
@@ -43,14 +40,10 @@ function need(ids) {
 
 /* ---------- seed data ---------- */
 function SEED() {
-  const m = thisMonth(), d = new Date(); d.setMonth(d.getMonth() - 1);
-  const prev = d.toISOString().slice(0, 7);
   return {
-    version: 2,
+    version: 3,
     operators: [
-      { id: 'op1', name: 'Ahmad Transport Services', owner: 'Ahmad Rahim', email: 'ahmad@demo.my', phone: '012-345 6789', area: 'Petaling Jaya', schools: ['SK Taman Megah', 'SJK(C) Yuk Chai'], fee: 180, rating: 4.8, status: 'approved' },
-      { id: 'op2', name: 'Mei Ling School Bus', owner: 'Tan Mei Ling', email: 'meiling@demo.my', phone: '016-222 1188', area: 'Subang Jaya', schools: ['SK USJ 12', 'SMK Subang Utama'], fee: 200, rating: 4.9, status: 'approved' },
-      { id: 'op3', name: 'Raju Express Kids', owner: 'Raju Muthu', email: 'raju@demo.my', phone: '013-778 4321', area: 'Shah Alam', schools: ['SK Seksyen 7', 'SMK Seksyen 9'], fee: 150, rating: 4.6, status: 'approved' }
+      { id: 'op1', name: 'Ahmad Transport Services', owner: 'Ahmad Rahim', email: 'ahmad@demo.my', phone: '012-345 6789', area: 'Petaling Jaya', schools: ['SK Taman Megah', 'SJK(C) Yuk Chai'], status: 'approved' }
     ],
     buses: [
       { id: 'b1', op: 'op1', plate: 'WXY 2231', model: 'Toyota Hiace', seats: 14 },
@@ -76,25 +69,17 @@ function SEED() {
     ],
     children: [
       { id: 'c1', parent: 'p1', name: 'Adam Haziq', school: 'SK Taman Megah', grade: 'Year 3', stop: 'Jalan SS2/24', op: 'op1', routes: ['r1', 'r2'] },
-      { id: 'c2', parent: 'p1', name: 'Sofea Irdina', school: 'SK Taman Megah', grade: 'Year 1', stop: 'Jalan SS2/24', op: null, routes: [] },
+      { id: 'c2', parent: 'p1', name: 'Sofea Irdina', school: 'SK Taman Megah', grade: 'Year 1', stop: 'Jalan SS2/24', op: 'op1', routes: ['r1', 'r2'] },
       { id: 'c3', parent: 'p3', name: 'Hana Sofia', school: 'SK Taman Megah', grade: 'Year 4', stop: 'Jalan SS2/72', op: 'op1', routes: ['r1', 'r2'] },
       { id: 'c4', parent: 'p4', name: 'Arjun Kumar', school: 'SK Taman Megah', grade: 'Year 2', stop: 'Taman Paramount', op: 'op1', routes: ['r1', 'r2'] },
       { id: 'c5', parent: 'p2', name: 'Daniel Lee', school: 'SJK(C) Yuk Chai', grade: 'Year 5', stop: 'SS3 Park', op: 'op1', routes: ['r3'] }
     ],
-    requests: [{ id: 'q1', child: 'c2', op: 'op1', status: 'pending', note: 'Same stop as her brother Adam, morning and afternoon.', date: today() }],
     absences: [],
     trips: {},
-    invoices: [
-      ...['c1', 'c3', 'c4', 'c5'].map(c => ({ id: uid(), child: c, op: 'op1', month: prev, amount: 180, status: 'paid', paidOn: prev + '-05' })),
-      { id: uid(), child: 'c1', op: 'op1', month: m, amount: 180, status: 'paid', paidOn: m + '-03' },
-      { id: uid(), child: 'c3', op: 'op1', month: m, amount: 180, status: 'unpaid' },
-      { id: uid(), child: 'c4', op: 'op1', month: m, amount: 180, status: 'paid', paidOn: m + '-06' },
-      { id: uid(), child: 'c5', op: 'op1', month: m, amount: 180, status: 'unpaid' }
-    ],
     incidents: [],
     notes: [
-      { id: uid(), to: 'p1', text: 'Welcome to Onboard! Your children, trips and payments are all in one place.', time: '08:00', date: today(), read: true },
-      { id: uid(), to: 'op1', text: 'Nurul Aisyah requested a seat for Sofea Irdina.', time: '09:12', date: today(), read: false }
+      { id: uid(), to: 'p1', text: 'Welcome to Onboard! Follow every trip and tell the driver when your child is not riding.', time: '08:00', date: today(), read: true },
+      { id: uid(), to: 'op1', text: 'Welcome to Onboard! Your routes, drivers and students are set up.', time: '07:00', date: today(), read: false }
     ]
   };
 }
@@ -103,7 +88,7 @@ function SEED() {
 let S;
 function load() {
   try { const raw = localStorage.getItem(STORE_KEY); S = raw ? JSON.parse(raw) : SEED(); } catch (e) { S = S || SEED(); }
-  if (!S || S.version !== 2) S = SEED();
+  if (!S || S.version !== 3) S = SEED();
 }
 function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) { } }
 function resetDemo() { S = SEED(); save(); }
