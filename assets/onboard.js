@@ -41,7 +41,7 @@ function need(ids) {
 /* ---------- seed data ---------- */
 function SEED() {
   return {
-    version: 3,
+    version: 4,
     operators: [
       { id: 'op1', name: 'Ahmad Transport Services', owner: 'Ahmad Rahim', email: 'ahmad@demo.my', phone: '012-345 6789', area: 'Petaling Jaya', schools: ['SK Taman Megah', 'SJK(C) Yuk Chai'], status: 'approved' }
     ],
@@ -76,7 +76,16 @@ function SEED() {
     ],
     absences: [],
     trips: {},
-    incidents: [],
+    incidents: [
+      { id: 'i1', op: 'op1', from: 'p3', child: 'c3', bus: 'b1', route: 'r1', category: 'Faulty seat belt', text: 'Seat belt on the 3rd row, left side, is very hard to buckle. Hana had to sit without it yesterday.', photo: null, date: today(), time: '07:42', status: 'open', replies: [] }
+    ],
+    chats: [
+      { id: uid(), route: 'r1', from: 'd1', role: 'driver', name: 'Faizal Hassan', text: 'Selamat pagi semua! Tomorrow I will reach Jalan SS2/24 at 06:45 as usual. Please be ready 5 minutes early.', date: today(), time: '06:20' },
+      { id: uid(), route: 'r1', from: 'p3', role: 'parent', name: 'Farah Hanim', text: 'Noted, thank you Encik Faizal 🙏', date: today(), time: '06:31' },
+      { id: uid(), route: 'r2', from: 'd1', role: 'driver', name: 'Faizal Hassan', text: 'Reminder: Friday pick-up from school is 12:15 because of early dismissal.', date: today(), time: '12:02' },
+      { id: uid(), route: 'r2', from: 'p4', role: 'parent', name: 'Priya Kumar', text: 'Thanks for the heads up!', date: today(), time: '12:10' }
+    ],
+    chatRead: {},
     notes: [
       { id: uid(), to: 'p1', text: 'Welcome to Onboard! Follow every trip and tell the driver when your child is not riding.', time: '08:00', date: today(), read: true },
       { id: uid(), to: 'op1', text: 'Welcome to Onboard! Your routes, drivers and students are set up.', time: '07:00', date: today(), read: false }
@@ -88,7 +97,7 @@ function SEED() {
 let S;
 function load() {
   try { const raw = localStorage.getItem(STORE_KEY); S = raw ? JSON.parse(raw) : SEED(); } catch (e) { S = S || SEED(); }
-  if (!S || S.version !== 3) S = SEED();
+  if (!S || S.version !== 4) S = SEED();
 }
 function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) { } }
 function resetDemo() { S = SEED(); save(); }
@@ -145,3 +154,42 @@ const kidBadge = (route, trip, k) => {
   if (s === 'dropped') return `<span class="badge b-ok">${route.session === 'AM' ? 'At school' : 'Home'}</span>`;
   return ST_BADGE[s];
 };
+
+/* ---------- group chats ----------
+   One group per route: the morning route is "Pickup from home", the afternoon route is "Pickup from school".
+   Members are the route's driver plus the parents of every child on it. */
+const chatName = r => r.session === 'AM' ? 'Pickup from home' : 'Pickup from school';
+const chatIcon = r => r.session === 'AM' ? '🏠' : '🏫';
+const chatMsgs = rid => S.chats.filter(m => m.route === rid);
+const chatMembers = r => ({ driver: by(S.drivers, r.driver), parents: [...new Set(routeKids(r).map(k => k.parent))].map(id => by(S.parents, id)).filter(Boolean) });
+const chatUnread = (uid_, rid) => Math.max(0, chatMsgs(rid).filter(m => m.from !== uid_).length - ((S.chatRead || {})[uid_ + ':' + rid] || 0));
+function markChatRead(uid_, rid) {
+  S.chatRead = S.chatRead || {};
+  const n = chatMsgs(rid).filter(m => m.from !== uid_).length;
+  if (S.chatRead[uid_ + ':' + rid] !== n) { S.chatRead[uid_ + ':' + rid] = n; save(); }
+}
+
+/* ---------- incidents ---------- */
+const INC_TYPES = ['Faulty seat belt', 'Vehicle condition (seats, doors, windows, air-con)', 'Unsafe driving', 'Driver or attendant behaviour', 'Bullying or behaviour on the bus', 'Child hurt or unwell', 'Hygiene / cleanliness', 'Other'];
+const INC_STATUS = {
+  open: '<span class="badge b-bad">Open</span>',
+  progress: '<span class="badge b-warn">In progress</span>',
+  resolved: '<span class="badge b-ok">Resolved</span>'
+};
+/* shrink a photo so it fits comfortably in browser storage */
+function shrinkPhoto(file, cb) {
+  const r = new FileReader();
+  r.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 900, k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      cb(c.toDataURL('image/jpeg', 0.7));
+    };
+    img.onerror = () => cb(null);
+    img.src = r.result;
+  };
+  r.readAsDataURL(file);
+}
+function showPhoto(src) { modal(`<img src="${src}" alt="Incident photo" style="width:100%;border-radius:12px"><div class="row" style="margin-top:12px"><button class="btn btn-g" onclick="closeModal()">Close</button></div>`); }

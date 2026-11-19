@@ -76,21 +76,31 @@ const t = k => (T[lang] && T[lang][k]) || T.en[k] || k;
 function setLang(l) { lang = l; try { localStorage.setItem('onboard_lang', l); } catch (e) {} render(); }
 
 /* ================= routing ================= */
-let route = 'landing', tab = null, openRoute = null;
-function go(r, tb) { route = r; tab = tb || null; window.scrollTo(0, 0); render(); }
-window.onSync = () => render();
+let route = 'landing', tab = null, openRoute = null, openChat = null;
+function go(r, tb) { route = r; tab = tb || null; openChat = null; window.scrollTo(0, 0); render(); }
+/* when another tab changes data, re-render but keep whatever the user is typing */
+window.onSync = () => {
+  const keep = {}, act = document.activeElement;
+  document.querySelectorAll('#view input[id],#view textarea[id],#view select[id]').forEach(el => { if (el.type !== 'file') keep[el.id] = el.value; });
+  const sel = act && act.id && act.setSelectionRange ? [act.id, act.selectionStart, act.selectionEnd] : act && act.id ? [act.id] : null;
+  render();
+  Object.entries(keep).forEach(([id, v]) => { const el = document.getElementById(id); if (el && el.type !== 'file') el.value = v; });
+  if (sel) { const el = document.getElementById(sel[0]); if (el) { el.focus(); if (sel.length > 1 && el.setSelectionRange) try { el.setSelectionRange(sel[1], sel[2]); } catch (e) {} } }
+};
 const me = () => USER;
 
 const NAVS = {
   parent: [
     { id: 'home', ic: '🏠', label: 'Home' },
     { id: 'kids', ic: '👧', label: 'My children', short: 'Children' },
+    { id: 'chat', ic: '💬', label: 'Group chat', short: 'Chat', badge: () => chatBadge() },
+    { id: 'report', ic: '🚨', label: 'Report incident', short: 'Report' },
     { id: 'alerts', ic: '🔔', label: 'Notifications', short: 'Alerts', badge: () => unreadFor(me().id) }
   ],
   driver: [
     { id: 'today', ic: '🚌', label: "Today's trips", short: 'Trips' },
     { id: 'students', ic: '👧', label: 'Students' },
-    { id: 'report', ic: '⚠️', label: 'Report an issue', short: 'Report' },
+    { id: 'chat', ic: '💬', label: 'Group chat', short: 'Chat', badge: () => chatBadge() },
     { id: 'alerts', ic: '🔔', label: 'Notifications', short: 'Alerts', badge: () => unreadFor(me().id) }
   ]
 };
@@ -109,13 +119,15 @@ function render() {
   bn.style.display = '';
   const cfg = NAVS[route];
   if (!tab) tab = cfg[0].id;
+  const page = VIEWS[route][tab]();
   const items = cfg.map(n => ({ ...n, b: n.badge ? n.badge() : 0 }));
   const side = items.map(n => `<button class="nav-i ${tab === n.id ? 'on' : ''}" onclick="go('${route}','${n.id}')"><span class="ic">${n.ic}</span>${n.label}${n.b ? `<span class="badge b-bad">${n.b}</span>` : ''}</button>`).join('');
   bn.innerHTML = items.map(n => `<button class="${tab === n.id ? 'on' : ''}" onclick="go('${route}','${n.id}')"><span class="ic">${n.ic}</span>${n.short || n.label}${n.b ? '<span class="dotb"></span>' : ''}</button>`).join('');
   const sub = route === 'parent' ? 'Parent' : 'Driver · ' + (by(S.buses, me().bus)?.plate || '');
   v.innerHTML = `<div class="shell"><aside class="side"><div class="who"><b>${esc(me().name)}</b><span>${esc(sub)}</span></div>${side}
     <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px"><button class="nav-i" onclick="if(confirm('Reset all demo data?')){resetDemo();render();toast('Demo data reset')}"><span class="ic">↺</span>Reset demo data</button></div></aside>
-    <main class="main">${VIEWS[route][tab]()}</main></div>`;
+    <main class="main">${page}</main></div>`;
+  const box = document.getElementById('chatMsgs'); if (box) box.scrollTop = box.scrollHeight;
 }
 
 /* ================= landing ================= */
@@ -386,8 +398,7 @@ function tripScreen(r) {
     ${footer}
   </div>
   ${stats}
-  <div class="card"><h3>Route</h3>${timeline(r, tr)}</div>
-  <button class="btn btn-g btn-sm" onclick="go('driver','report')">⚠️ Report delay or problem</button>`;
+  <div class="card"><h3>Route</h3>${timeline(r, tr)}</div>`;
 }
 function logTrip(tr, text) { tr.log.push({ time: nowTime(), text }); }
 function startTrip(rid) {
@@ -456,29 +467,100 @@ VIEWS.driver.students = () => {
       ${ab ? '<span class="badge b-bad">Not riding today</span>' : ''}<a class="btn btn-o btn-sm" style="text-decoration:none" href="tel:${esc((p?.phone || '').replace(/\s/g, ''))}" aria-label="Call ${esc(p?.name)}">📞</a></div>`;
   }).join('') || '<div class="empty">No students</div>'}</div>`).join('') || '<div class="card empty">No routes assigned yet.</div>'}`;
 };
-VIEWS.driver.report = () => `<h1>Report an issue</h1><p class="lead">Your operator is alerted straight away.</p>
-  <div class="card"><div class="form">
-    <div class="full"><label class="f" for="iType">What happened?</label><select class="inp" id="iType"><option>Running late / traffic</option><option>Vehicle breakdown</option><option>Accident</option><option>Child unwell or injured</option><option>Behaviour issue</option><option>Other</option></select></div>
-    <div class="full"><label class="f" for="iText">Details</label><textarea class="inp" id="iText" placeholder="e.g. Jam at Federal Highway, about 15 minutes late"></textarea></div>
-    <label class="check full"><input type="checkbox" id="iPar"><span><b>Also notify parents on my current route</b><br><small style="color:var(--muted)">Good for delays.</small></span></label>
-    <div class="full"><button class="btn btn-p" onclick="sendIncident()">Send report</button></div>
-  </div></div>
-  <div class="card" style="background:#fdeaea"><b style="color:var(--bad)">Emergency?</b><div style="font-size:14px;margin-top:4px">Call 999 first, then your operator.</div><div class="row" style="margin-top:10px"><a class="btn btn-bad" style="text-decoration:none" href="tel:999">📞 999</a><a class="btn btn-o" style="text-decoration:none" href="tel:${esc((by(S.operators, me().op)?.phone || '').replace(/\s/g, ''))}">📞 Operator</a></div></div>`;
-function sendIncident() {
-  const type = fv('iType'), text = fv('iText'), toParents = document.getElementById('iPar').checked;
-  const running = myRoutes().find(r => tripFor(r.id).status === 'running');
-  S.incidents.unshift({ id: uid(), op: me().op, driver: me().id, route: running?.id || null, type, text, time: nowTime(), date: today(), status: 'open' });
-  notify(me().op, `🚨 ${me().name}: ${type}${text ? ' – ' + text : ''}`);
-  if (toParents) {
-    const r = running || myRoutes()[0];
-    if (r) routeKids(r).forEach(k => notify(k.parent, `ℹ️ Message from driver ${me().name}: ${type}${text ? '. ' + text : ''}`));
-  }
-  save(); toast('Report sent to operator'); go('driver', 'today');
-}
 VIEWS.driver.alerts = notesView;
 
-/* ================= boot ================= */
-if (USER && USER.role === 'driver' && !by(S.drivers, USER.id)) setUser(null);
+/* ================= GROUP CHAT (parents + driver) ================= */
+function myChatRoutes() {
+  if (!me()) return [];
+  if (me().role === 'driver') return myRoutes();
+  const ids = [...new Set(myKids().flatMap(k => k.routes))];
+  return ids.map(id => by(S.routes, id)).filter(Boolean).sort((a, b) => a.session.localeCompare(b.session));
+}
+const chatBadge = () => myChatRoutes().reduce((n, r) => n + chatUnread(me().id, r.id), 0);
+function chatView() {
+  const rs = myChatRoutes();
+  if (openChat && rs.some(r => r.id === openChat)) return chatRoom(by(S.routes, openChat));
+  openChat = null;
+  return `<h1>Group chat</h1><p class="lead">${me().role === 'driver' ? 'Talk to the parents on your routes.' : 'Talk to your driver and the other parents on the same bus.'}</p>
+  <div class="card chat-list">${rs.length ? rs.map(r => {
+    const last = chatMsgs(r.id).slice(-1)[0], un = chatUnread(me().id, r.id), m = chatMembers(r);
+    return `<button class="chat-row" onclick="openChat='${r.id}';render()"><div class="chat-ic">${chatIcon(r)}</div>
+      <div class="grow"><b>${chatName(r)}</b><small style="display:block">${esc(r.name)} · ${m.parents.length} parents + driver</small>
+      <small style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${last ? esc(last.name.split(' ')[0]) + ': ' + esc(last.text) : 'No messages yet'}</small></div>
+      <div style="text-align:right">${last ? `<small style="color:var(--muted)">${last.time}</small>` : ''}${un ? `<div><span class="badge b-bad">${un}</span></div>` : ''}</div></button>`;
+  }).join('') : `<div class="empty">${me().role === 'driver' ? 'No routes assigned yet.' : 'Your chats appear once your child is on a bus route.'}</div>`}</div>`;
+}
+function chatRoom(r) {
+  markChatRead(me().id, r.id);
+  const msgs = chatMsgs(r.id), m = chatMembers(r);
+  let lastDay = '';
+  const body = msgs.map(x => {
+    const day = x.date === today() ? 'Today' : x.date; const sep = day !== lastDay ? `<div class="day">${day}</div>` : ''; lastDay = day;
+    const mine_ = x.from === me().id;
+    return `${sep}<div class="msg ${mine_ ? 'me' : ''}">${mine_ ? '' : `<div class="who ${x.role === 'driver' ? 'drv' : ''}">${esc(x.name)}${x.role === 'driver' ? ' · Driver 🚌' : ''}</div>`}${esc(x.text)}<div class="tm">${x.time}</div></div>`;
+  }).join('');
+  return `<div class="card chat-box">
+    <div class="chat-head"><button class="btn btn-g btn-sm" style="padding:6px 8px" aria-label="Back to chats" onclick="openChat=null;render()">←</button><div class="chat-ic" style="width:38px;height:38px;font-size:18px">${chatIcon(r)}</div>
+      <div class="grow"><b>${chatName(r)}</b><small style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.driver?.name || 'No driver')} (driver), ${m.parents.map(p => esc(p.name.split(' ')[0])).join(', ')}</small></div></div>
+    <div class="chat-msgs" id="chatMsgs">${body || '<div class="empty">Say hello 👋</div>'}</div>
+    <form class="chat-send" onsubmit="sendChat('${r.id}');return false"><input class="inp" id="chatInput" placeholder="Type a message" autocomplete="off" maxlength="1000"><button class="btn btn-p" type="submit">Send</button></form>
+  </div>`;
+}
+function sendChat(rid) {
+  const el = document.getElementById('chatInput'), text = el.value.trim();
+  if (!text) return;
+  S.chats.push({ id: uid(), route: rid, from: me().id, role: me().role, name: me().name, text, date: today(), time: nowTime() });
+  markChatRead(me().id, rid); save(); render();
+  const i = document.getElementById('chatInput'); if (i) i.focus();
+}
+VIEWS.parent.chat = chatView;
+VIEWS.driver.chat = chatView;
+
+/* ================= INCIDENT REPORTS (parent -> operator) ================= */
+let incPhoto = null;
+VIEWS.parent.report = () => {
+  const kids = myKids().filter(k => k.op), mineInc = S.incidents.filter(i => i.from === me().id);
+  const rs = [...new Set(kids.flatMap(k => k.routes))].map(id => by(S.routes, id)).filter(Boolean);
+  return `<h1>Report an incident</h1><p class="lead">Seen something unsafe on the bus? Your bus operator is alerted straight away.</p>
+  ${kids.length ? `<div class="card"><div class="form">
+    <div class="full"><label class="f" for="incType">What's the problem? *</label><select class="inp" id="incType">${INC_TYPES.map(x => `<option>${x}</option>`).join('')}</select></div>
+    <div><label class="f" for="incKid">Child</label><select class="inp" id="incKid">${kids.map(k => `<option value="${k.id}">${esc(k.name)}</option>`).join('')}</select></div>
+    <div><label class="f" for="incRoute">Which trip / bus</label><select class="inp" id="incRoute">${rs.map(r => `<option value="${r.id}">${esc(r.name)} · ${esc(by(S.buses, r.bus)?.plate || '')}</option>`).join('')}<option value="">Not sure</option></select></div>
+    <div class="full"><label class="f" for="incText">What happened? *</label><textarea class="inp" id="incText" placeholder="e.g. The seat belt on the 3rd row, left side, doesn't lock."></textarea></div>
+    <div class="full"><label class="f" for="incPhotoIn">Photo (optional)</label>
+      <div class="row"><label class="btn btn-o btn-sm" style="cursor:pointer">📷 ${incPhoto ? 'Change photo' : 'Add photo'}<input id="incPhotoIn" type="file" accept="image/*" capture="environment" style="display:none" onchange="pickIncPhoto(this)"></label>
+      ${incPhoto ? `<img src="${incPhoto}" class="inc-photo" alt="Selected photo" onclick="showPhoto(incPhoto)"><button class="btn btn-g btn-sm" onclick="incPhoto=null;window.onSync()">Remove</button>` : ''}</div></div>
+    <div class="full"><button class="btn btn-p" onclick="sendReport()">Send report</button></div>
+  </div></div>
+  <div class="card" style="background:#fdeaea"><b style="color:var(--bad)">Emergency?</b><div style="font-size:14px;margin-top:4px">If a child is in danger, call 999 first.</div><div class="row" style="margin-top:10px"><a class="btn" style="text-decoration:none;background:var(--bad);color:#fff" href="tel:999">📞 Call 999</a></div></div>` : '<div class="card empty">You can report incidents once your child is on a bus.</div>'}
+  <h3 style="margin:24px 0 12px">My reports</h3>
+  ${mineInc.length ? mineInc.map(i => incCard(i)).join('') : '<div class="card empty">No reports yet</div>'}`;
+};
+function incCard(i) {
+  const k = by(S.children, i.child), r = by(S.routes, i.route), b = by(S.buses, i.bus);
+  return `<div class="card inc ${i.status}"><div class="row between"><b>${esc(i.category)}</b>${INC_STATUS[i.status]}</div>
+    <div style="font-size:13px;color:var(--muted);margin:2px 0 8px">${i.date === today() ? 'Today' : i.date} ${i.time}${k ? ' · ' + esc(k.name) : ''}${r ? ' · ' + esc(r.name) : ''}${b ? ' · ' + esc(b.plate) : ''}</div>
+    <div style="font-size:15px">${esc(i.text)}</div>
+    ${i.photo ? `<img src="${i.photo}" class="inc-photo" style="margin-top:10px" alt="Photo attached to report" onclick="showPhoto(this.src)">` : ''}
+    ${(i.replies || []).map(x => `<div class="reply"><b>${esc(x.name)}</b> · <small style="color:var(--muted)">${x.time}</small><div>${esc(x.text)}</div></div>`).join('')}
+  </div>`;
+}
+function pickIncPhoto(input) {
+  const f = input.files && input.files[0]; if (!f) return;
+  shrinkPhoto(f, data => { if (!data) { toast("Couldn't read that photo"); return; } incPhoto = data; window.onSync(); });
+}
+function sendReport() {
+  if (!need(['incText'])) return;
+  const rid = fv('incRoute'), r = by(S.routes, rid), k = by(S.children, fv('incKid'));
+  const inc = { id: uid(), op: k.op, from: me().id, child: k.id, route: rid || null, bus: r?.bus || null, category: fv('incType'), text: fv('incText'), photo: incPhoto, date: today(), time: nowTime(), status: 'open', replies: [] };
+  S.incidents.unshift(inc);
+  notify(k.op, `🚨 New incident from ${me().name}: ${inc.category}${r ? ' (' + (by(S.buses, r.bus)?.plate || r.name) + ')' : ''}.`);
+  try { save(); } catch (e) {}
+  if (!localStorage.getItem(STORE_KEY)?.includes(inc.id)) { inc.photo = null; save(); toast('Photo too large to keep in this demo. Report sent without it.'); }
+  incPhoto = null; render(); toast('Report sent to your bus operator'); scrollTo(0, document.body.scrollHeight);
+}
+
+/* ================= boot ================= */if (USER && USER.role === 'driver' && !by(S.drivers, USER.id)) setUser(null);
 if (USER && USER.role === 'parent' && !by(S.parents, USER.id)) setUser(null);
 render();
 </script>

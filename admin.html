@@ -38,7 +38,13 @@ let tab = 'dash', authMode = location.hash === '#signup' ? 'signup' : 'login', l
 const me = () => USER;
 const op = () => by(S.operators, USER.id);
 const mine = list => list.filter(x => x.op === USER.id);
-window.onSync = () => render();
+window.onSync = () => {
+  const keep = {}, act = document.activeElement;
+  document.querySelectorAll('#view input[id],#view textarea[id],#view select[id]').forEach(el => keep[el.id] = el.value);
+  render();
+  Object.entries(keep).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
+  if (act && act.id) { const el = document.getElementById(act.id); if (el) el.focus(); }
+};
 
 const NAV = [
   { id: 'dash', ic: '📊', label: 'Dashboard', short: 'Home' },
@@ -47,10 +53,11 @@ const NAV = [
   { id: 'routes', ic: '🗺️', label: 'Routes' },
   { id: 'drivers', ic: '🧑‍✈️', label: 'Drivers' },
   { id: 'buses', ic: '🚐', label: 'Buses' },
+  { id: 'incidents', ic: '🚨', label: 'Incidents', badge: () => S.incidents.filter(i => i.op === USER.id && i.status === 'open').length },
   { id: 'messages', ic: '💬', label: 'Messages', short: 'Inbox', badge: () => unreadFor(USER.id) },
   { id: 'settings', ic: '⚙️', label: 'Settings' }
 ];
-const MOBILE_NAV = ['dash', 'live', 'students', 'messages', 'more'];
+const MOBILE_NAV = ['dash', 'live', 'students', 'incidents', 'more'];
 
 function go(t) { tab = t; scrollTo(0, 0); render(); }
 
@@ -68,7 +75,7 @@ function render() {
   const items = NAV.map(n => ({ ...n, b: n.badge ? n.badge() : 0 }));
   const side = items.map(n => `<button class="nav-i ${tab === n.id ? 'on' : ''}" onclick="go('${n.id}')"><span class="ic">${n.ic}</span>${n.label}${n.b ? `<span class="badge ${n.live ? 'b-ok' : 'b-bad'}">${n.b}</span>` : ''}</button>`).join('');
   bn.innerHTML = MOBILE_NAV.map(id => {
-    if (id === 'more') { const on = !['dash', 'live', 'students', 'messages'].includes(tab); return `<button class="${on ? 'on' : ''}" onclick="openMore()"><span class="ic">☰</span>More</button>`; }
+    if (id === 'more') { const on = !['dash', 'live', 'students', 'incidents'].includes(tab); return `<button class="${on ? 'on' : ''}" onclick="openMore()"><span class="ic">☰</span>More</button>`; }
     const n = items.find(x => x.id === id);
     return `<button class="${tab === id ? 'on' : ''}" onclick="go('${id}')"><span class="ic">${n.ic}</span>${n.short || n.label}${n.b ? '<span class="dotb"' + (n.live ? ' style="background:var(--ok)"' : '') + '></span>' : ''}</button>`;
   }).join('');
@@ -77,7 +84,7 @@ function render() {
     <main class="main">${VIEWS[tab]()}</main></div>`;
 }
 function openMore() {
-  modal(`<h2>More</h2><div style="display:grid;gap:4px;margin-top:12px">${NAV.filter(n => !['dash', 'live', 'students', 'messages'].includes(n.id)).map(n => `<button class="nav-i" onclick="closeModal();go('${n.id}')"><span class="ic">${n.ic}</span>${n.label}</button>`).join('')}
+  modal(`<h2>More</h2><div style="display:grid;gap:4px;margin-top:12px">${NAV.filter(n => !['dash', 'live', 'students', 'incidents'].includes(n.id)).map(n => `<button class="nav-i" onclick="closeModal();go('${n.id}')"><span class="ic">${n.ic}</span>${n.label}</button>`).join('')}
   <button class="nav-i" onclick="closeModal();if(confirm('Reset all demo data?')){resetDemo();render()}"><span class="ic">↺</span>Reset demo data</button></div>`);
 }
 
@@ -135,10 +142,10 @@ const tripBadge = tr => tr.status === 'running' ? '<span class="live">LIVE</span
 VIEWS.dash = () => {
   const kids = mine(S.children), rs = mine(S.routes);
   const running = rs.filter(r => tripFor(r.id).status === 'running'), done = rs.filter(r => tripFor(r.id).status === 'done');
-  const inc = S.incidents.filter(i => i.op === USER.id && i.status === 'open');
+  const inc = S.incidents.filter(i => i.op === USER.id && i.status !== 'resolved');
   const absToday = S.absences.filter(a => a.date === today() && kids.some(k => k.id === a.child));
   return `<h1>Good ${new Date().getHours() < 12 ? 'morning' : 'afternoon'}, ${esc(op().owner.split(' ')[0])}</h1><p class="lead">${new Date().toLocaleDateString('en-MY', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-  ${inc.length ? `<div class="card" style="border-left:4px solid var(--bad)"><h3>🚨 Open issues</h3>${inc.map(i => `<div class="list-i"><div class="grow"><b style="white-space:normal">${esc(i.type)}${i.text ? ' – ' + esc(i.text) : ''}</b><small>${esc(by(S.drivers, i.driver)?.name)} · ${i.time}</small></div><button class="btn btn-o btn-sm" onclick="resolveInc('${i.id}')">Resolve</button></div>`).join('')}</div>` : ''}
+  ${inc.length ? `<div class="card" style="border-left:4px solid var(--bad)"><div class="row between"><h3 style="margin:0">🚨 Incidents to handle</h3><button class="btn btn-o btn-sm" onclick="go('incidents')">View all</button></div>${inc.slice(0, 3).map(i => `<div class="list-i"><div class="grow"><b>${esc(i.category)}</b><small>${esc(by(S.parents, i.from)?.name)} · ${esc(by(S.buses, i.bus)?.plate || 'Bus not given')} · ${i.date === today() ? 'Today' : i.date} ${i.time}</small></div>${INC_STATUS[i.status]}</div>`).join('')}</div>` : ''}
   <div class="grid4" style="margin-bottom:18px">
     <div class="stat"><div class="v">${kids.length}</div><div class="l">Students</div></div>
     <div class="stat"><div class="v">${running.length}<span style="font-size:16px;color:var(--muted)"> / ${rs.length}</span></div><div class="l">Trips running now</div></div>
@@ -154,7 +161,6 @@ VIEWS.dash = () => {
     </div>
   </div>`;
 };
-function resolveInc(id) { S.incidents.find(i => i.id === id).status = 'resolved'; save(); render(); }
 
 VIEWS.live = () => {
   const rs = mine(S.routes);
@@ -369,6 +375,41 @@ function delBus(bid) {
   const b = by(S.buses, bid); if (!confirm(`Remove ${b.plate}?`)) return;
   S.routes.forEach(r => { if (r.bus === bid) r.bus = null; }); S.drivers.forEach(d => { if (d.bus === bid) d.bus = null; });
   S.buses = S.buses.filter(x => x.id !== bid); save(); render();
+}
+
+/* ---------- incidents (reported by parents) ---------- */
+let incFilter = 'active';
+VIEWS.incidents = () => {
+  const all = S.incidents.filter(i => i.op === USER.id);
+  const list = incFilter === 'active' ? all.filter(i => i.status !== 'resolved') : all;
+  return `<div class="row between" style="margin-bottom:16px"><div><h1>Incidents</h1><p class="lead" style="margin:0">Safety and vehicle problems reported by parents.</p></div>
+    <div class="seg"><button class="${incFilter === 'active' ? 'on' : ''}" onclick="incFilter='active';render()">To handle (${all.filter(i => i.status !== 'resolved').length})</button><button class="${incFilter === 'all' ? 'on' : ''}" onclick="incFilter='all';render()">All</button></div></div>
+  ${list.length ? list.map(i => {
+    const p = by(S.parents, i.from), k = by(S.children, i.child), r = by(S.routes, i.route), b = by(S.buses, i.bus), d = r && by(S.drivers, r.driver);
+    return `<div class="card inc ${i.status}">
+      <div class="row between"><div><b style="font-size:17px">${esc(i.category)}</b><div style="font-size:13px;color:var(--muted)">${i.date === today() ? 'Today' : i.date} ${i.time} · ${esc(b?.plate || 'Bus not given')}${r ? ' · ' + esc(r.name) : ''}${d ? ' · driver ' + esc(d.name) : ''}</div></div>
+        <select class="inp" style="width:auto" aria-label="Status" onchange="setIncStatus('${i.id}',this.value)">${[['open', 'Open'], ['progress', 'In progress'], ['resolved', 'Resolved']].map(([v, l]) => `<option value="${v}" ${i.status === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      <div style="margin:10px 0;font-size:15px">${esc(i.text)}</div>
+      ${i.photo ? `<img src="${i.photo}" class="inc-photo" alt="Photo from parent" onclick="showPhoto(this.src)">` : ''}
+      <div style="font-size:14px;margin-top:8px">Reported by <b>${esc(p?.name)}</b>${k ? ` (${esc(k.name)}'s ${esc(p?.gender === 'Dad' ? 'dad' : p?.gender === 'Mom' ? 'mom' : 'parent')})` : ''} · <a href="tel:${esc((p?.phone || '').replace(/\s/g, ''))}">${esc(p?.phone)}</a></div>
+      ${(i.replies || []).map(x => `<div class="reply"><b>${esc(x.name)}</b> · <small style="color:var(--muted)">${x.time}</small><div>${esc(x.text)}</div></div>`).join('')}
+      <div class="row" style="margin-top:12px;flex-wrap:nowrap"><input class="inp" id="rep_${i.id}" placeholder="Reply to ${esc(p?.name.split(' ')[0] || 'parent')}…" onkeydown="if(event.key==='Enter')replyInc('${i.id}')"><button class="btn btn-p btn-sm" onclick="replyInc('${i.id}')">Reply</button></div>
+    </div>`;
+  }).join('') : `<div class="card empty">${incFilter === 'active' ? 'Nothing to handle. 🎉' : 'No incidents reported yet.'}</div>`}`;
+};
+function setIncStatus(id, st) {
+  const i = S.incidents.find(x => x.id === id); i.status = st;
+  const label = { open: 'reopened', progress: 'being looked into', resolved: 'resolved' }[st];
+  notify(i.from, `🚨 Your report "${i.category}" is now ${label}.`);
+  save(); render(); toast('Status updated. Parent notified.');
+}
+function replyInc(id) {
+  const el = document.getElementById('rep_' + id), text = el.value.trim(); if (!text) return;
+  const i = S.incidents.find(x => x.id === id);
+  i.replies = i.replies || []; i.replies.push({ name: op().name, text, time: nowTime(), date: today() });
+  if (i.status === 'open') i.status = 'progress';
+  notify(i.from, `💬 ${op().name} replied to your report "${i.category}": ${text}`);
+  el.value = ''; save(); render(); toast('Reply sent');
 }
 
 /* ---------- messages ---------- */
