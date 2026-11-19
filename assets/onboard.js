@@ -41,7 +41,7 @@ function need(ids) {
 /* ---------- seed data ---------- */
 function SEED() {
   return {
-    version: 4,
+    version: 5,
     operators: [
       { id: 'op1', name: 'Ahmad Transport Services', owner: 'Ahmad Rahim', email: 'ahmad@demo.my', phone: '012-345 6789', area: 'Petaling Jaya', schools: ['SK Taman Megah', 'SJK(C) Yuk Chai'], status: 'approved' }
     ],
@@ -86,6 +86,9 @@ function SEED() {
       { id: uid(), route: 'r2', from: 'p4', role: 'parent', name: 'Priya Kumar', text: 'Thanks for the heads up!', date: today(), time: '12:10' }
     ],
     chatRead: {},
+    announcements: [
+      { id: 'a1', op: 'op1', to: 'All parents', count: 4, text: 'No school bus service on Monday for the public holiday. Selamat bercuti!', date: today(), time: '08:30' }
+    ],
     notes: [
       { id: uid(), to: 'p1', text: 'Welcome to Onboard! Follow every trip and tell the driver when your child is not riding.', time: '08:00', date: today(), read: true },
       { id: uid(), to: 'op1', text: 'Welcome to Onboard! Your routes, drivers and students are set up.', time: '07:00', date: today(), read: false }
@@ -97,7 +100,7 @@ function SEED() {
 let S;
 function load() {
   try { const raw = localStorage.getItem(STORE_KEY); S = raw ? JSON.parse(raw) : SEED(); } catch (e) { S = S || SEED(); }
-  if (!S || S.version !== 4) S = SEED();
+  if (!S || S.version !== 5) S = SEED();
 }
 function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) { } }
 function resetDemo() { S = SEED(); save(); }
@@ -119,6 +122,8 @@ const unreadFor = id => S.notes.filter(n => n.to === id && !n.read).length;
 function markRead(id) { S.notes.forEach(n => { if (n.to === id) n.read = true; }); save(); }
 
 const isAbsent = (childId, date, session) => S.absences.some(a => a.child === childId && a.date === date && (a.session === 'ALL' || a.session === session));
+/* route names lead with the driver: "Faizal Hassan · Morning · SK Taman Megah" */
+const routeName = r => r ? `${by(S.drivers, r.driver)?.name || 'No driver'} · ${r.session === 'AM' ? 'Morning' : 'Afternoon'} · ${r.school}` : '';
 const routeKids = r => S.children.filter(c => c.routes.includes(r.id));
 
 /* today's trip for a route (a fresh idle one if it has not run yet today) */
@@ -160,6 +165,13 @@ const kidBadge = (route, trip, k) => {
    Members are the route's driver plus the parents of every child on it. */
 const chatName = r => r.session === 'AM' ? 'Pickup from home' : 'Pickup from school';
 const chatIcon = r => r.session === 'AM' ? '🏠' : '🏫';
+/* one-tap messages for things that happen often */
+const QUICK_MSGS = {
+  driver: ['🚗 Traffic jam, running late', '🌧️ Flooding on the road, taking another route', '⏱️ Running about 10 minutes late', '🛣️ Road closed, using a detour', '🔧 Bus breakdown, arranging a replacement'],
+  driverAM: '🏫 All children dropped at school safely ✅',
+  driverPM: '🚌 Leaving school now',
+  parent: ['🙋 Running late, please wait 2 minutes', '🤒 My child is sick today, not riding', '🚗 I will send my child myself today', '📍 We are at the pick-up point', '👍 Noted, thank you!']
+};
 const chatMsgs = rid => S.chats.filter(m => m.route === rid);
 const chatMembers = r => ({ driver: by(S.drivers, r.driver), parents: [...new Set(routeKids(r).map(k => k.parent))].map(id => by(S.parents, id)).filter(Boolean) });
 const chatUnread = (uid_, rid) => Math.max(0, chatMsgs(rid).filter(m => m.from !== uid_).length - ((S.chatRead || {})[uid_ + ':' + rid] || 0));

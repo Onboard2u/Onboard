@@ -4,8 +4,8 @@ School bus app for Malaysia with three parties: **parents**, **bus drivers** and
 
 | Page | Who | What they do |
 |---|---|---|
-| `index.html` | Parents and drivers | Parents follow each trip live, report absences and report incidents (e.g. a faulty seat belt, with a photo). Drivers run each trip stop by stop and tick every child on and off. Parents and drivers talk in two group chats per driver: **Pickup from home** (morning route) and **Pickup from school** (afternoon route). |
-| `admin.html` | Bus operators | Dashboard, live trips, incidents reported by parents (status and replies), students (enrolled with the parent's email), routes, drivers, buses and announcements. |
+| `index.html` | Parents and drivers | Parents follow each trip live, report absences and report incidents (e.g. a faulty seat belt, with a photo). Drivers run each trip stop by stop and tick every child on and off. Parents and drivers talk in the **Message** tab: two group chats per driver, with photo attachments and one-tap quick messages (traffic jam, flooding, running late…): **Pickup from home** (morning route) and **Pickup from school** (afternoon route). |
+| `admin.html` | Bus operators | Dashboard, live trips, incidents reported by parents (status and replies), announcements, notifications, students (enrolled with the parent's email), routes (named driver · Morning/Afternoon · school), drivers and buses. |
 
 Shared code lives in `assets/` (`onboard.js` for data and logic, `onboard.css` for styles). Logos and app icons are in `icons/`.
 

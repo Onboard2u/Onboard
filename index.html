@@ -93,14 +93,14 @@ const NAVS = {
   parent: [
     { id: 'home', ic: '🏠', label: 'Home' },
     { id: 'kids', ic: '👧', label: 'My children', short: 'Children' },
-    { id: 'chat', ic: '💬', label: 'Group chat', short: 'Chat', badge: () => chatBadge() },
+    { id: 'chat', ic: '💬', label: 'Message', badge: () => chatBadge() },
     { id: 'report', ic: '🚨', label: 'Report incident', short: 'Report' },
     { id: 'alerts', ic: '🔔', label: 'Notifications', short: 'Alerts', badge: () => unreadFor(me().id) }
   ],
   driver: [
     { id: 'today', ic: '🚌', label: "Today's trips", short: 'Trips' },
     { id: 'students', ic: '👧', label: 'Students' },
-    { id: 'chat', ic: '💬', label: 'Group chat', short: 'Chat', badge: () => chatBadge() },
+    { id: 'chat', ic: '💬', label: 'Message', badge: () => chatBadge() },
     { id: 'alerts', ic: '🔔', label: 'Notifications', short: 'Alerts', badge: () => unreadFor(me().id) }
   ]
 };
@@ -287,7 +287,7 @@ function trackCard(k) {
   else if (trip.status === 'running') line = `<div class="row between" style="margin-bottom:8px"><span>${esc(k.name.split(' ')[0])}:</span>${kidBadge(r, trip, k)}</div>`;
   else if (trip.status === 'done') line = `<div class="row between" style="margin-bottom:8px"><span>${esc(k.name.split(' ')[0])}:</span>${kidBadge(r, trip, k)}</div>`;
   return `<div class="card">
-    <div class="row between" style="margin-bottom:12px"><div class="row" style="gap:10px">${av(k.name)}<div><b>${esc(k.name)}</b><div style="font-size:13px;color:var(--muted)">${esc(r.name)}</div></div></div>${head}</div>
+    <div class="row between" style="margin-bottom:12px"><div class="row" style="gap:10px">${av(k.name)}<div><b>${esc(k.name)}</b><div style="font-size:13px;color:var(--muted)">${esc(routeName(r))}</div></div></div>${head}</div>
     ${line}
     ${timeline(r, trip, k.stop, r.session === 'AM' ? 'Pick-up' : 'Drop-off')}
     <div class="row between" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
@@ -325,7 +325,7 @@ VIEWS.parent.kids = () => {
     return `<div class="card"><div class="row">${av(k.name, 48)}<div class="grow"><b style="font-size:17px">${esc(k.name)}</b><small>${esc(k.grade)} · ${esc(k.school)}</small></div></div>
       <div style="margin-top:14px;font-size:14px;display:grid;gap:6px">
         <div>📍 Pick-up / drop-off: <b>${esc(k.stop)}</b></div>
-        <div>🚌 ${op ? `<b>${esc(op.name)}</b> · ${k.routes.map(id => `<span class="chip">${esc(by(S.routes, id)?.name || '')}</span>`).join('') || 'no route yet'}` : 'Not on a bus'}</div>
+        <div>🚌 ${op ? `<b>${esc(op.name)}</b> · ${k.routes.map(id => `<span class="chip">${esc(routeName(by(S.routes, id)) || '')}</span>`).join('') || 'no route yet'}` : 'Not on a bus'}</div>
         ${op ? `<div>📞 Operator: <a href="tel:${esc(op.phone.replace(/\s/g, ''))}">${esc(op.phone)}</a></div>` : ''}
         ${abs.map(a => `<div>📅 Not riding ${a.date === today() ? 'today' : 'tomorrow'}${a.session === 'ALL' ? '' : a.session === 'AM' ? ' (morning)' : ' (afternoon)'} <button class="btn btn-g btn-sm" onclick="undoAbsence('${a.id}')">Undo</button></div>`).join('')}
       </div>
@@ -351,7 +351,7 @@ VIEWS.driver.today = () => {
   ${rs.length ? rs.map(r => {
     const tr = tripFor(r.id), kids = routeKids(r), abs = kids.filter(k => isAbsent(k.id, today(), r.session)).length;
     const status = tr.status === 'running' ? '<span class="live">IN PROGRESS</span>' : tr.status === 'done' ? '<span class="badge b-ok">Completed ' + (tr.endedAt || '') + '</span>' : `<span class="badge b-n">Starts ${r.stops[0].time}</span>`;
-    return `<div class="card"><div class="row between"><div><b style="font-size:17px">${r.session === 'AM' ? '🌅' : '🌇'} ${esc(r.name)}</b><div style="color:var(--muted);font-size:14px">${r.stops.length} stops · ${kids.length} students${abs ? ` · <span style="color:var(--bad)">${abs} absent</span>` : ''}</div></div>${status}</div>
+    return `<div class="card"><div class="row between"><div><b style="font-size:17px">${r.session === 'AM' ? '🌅' : '🌇'} ${esc(routeName(r))}</b><div style="color:var(--muted);font-size:14px">${r.stops.length} stops · ${kids.length} students${abs ? ` · <span style="color:var(--bad)">${abs} absent</span>` : ''}</div></div>${status}</div>
       <button class="btn ${tr.status === 'running' ? 'btn-p' : tr.status === 'done' ? 'btn-o' : 'btn-n'} bigbtn" style="margin-top:14px" onclick="openRoute='${r.id}';render();scrollTo(0,0)">${tr.status === 'running' ? 'Continue trip →' : tr.status === 'done' ? 'View summary' : 'Open trip'}</button></div>`;
   }).join('') : '<div class="card empty">No routes assigned to you yet.</div>'}`;
 };
@@ -366,13 +366,13 @@ function tripScreen(r) {
     <div class="stat"><div class="v">${counts.dropped}</div><div class="l">Dropped off</div></div><div class="stat"><div class="v">${counts.absent}</div><div class="l">Absent</div></div></div>`;
 
   if (tr.status === 'idle') {
-    return `${back}<h1>${esc(r.name)}</h1><p class="lead">${kids.length} students · first stop ${r.stops[0].time}</p>${stats}
+    return `${back}<h1>${esc(routeName(r))}</h1><p class="lead">${kids.length} students · first stop ${r.stops[0].time}</p>${stats}
     <div class="card"><h3>Route</h3>${timeline(r, tr)}</div>
     <div class="card"><h3>Students</h3>${kids.map(k => `<div class="kid">${av(k.name)}<div class="grow"><b>${esc(k.name)}</b><small>${esc(k.stop)} · ${esc(k.grade)}</small></div>${isAbsent(k.id, today(), r.session) ? '<span class="badge b-bad">Parent: not riding</span>' : ''}</div>`).join('') || '<div class="empty">No students on this route</div>'}</div>
     <button class="btn btn-p bigbtn" onclick="startTrip('${r.id}')">▶ Start trip</button>`;
   }
   if (tr.status === 'done') {
-    return `${back}<h1>${esc(r.name)}</h1><p class="lead">Completed ${tr.startedAt} – ${tr.endedAt}. Bus checked, every child accounted for. ✅</p>${stats}
+    return `${back}<h1>${esc(routeName(r))}</h1><p class="lead">Completed ${tr.startedAt} – ${tr.endedAt}. Bus checked, every child accounted for. ✅</p>${stats}
     <div class="card"><h3>Trip log</h3>${tr.log.slice().reverse().map(l => `<div class="list-i"><div class="grow"><b style="white-space:normal;font-weight:500">${esc(l.text)}</b><small>${l.time}</small></div></div>`).join('')}</div>`;
   }
   // running
@@ -391,7 +391,7 @@ function tripScreen(r) {
   else footer = `<label class="check"><input type="checkbox" id="chk" ${onBus.length ? 'disabled' : ''}><span><b>I have walked the whole bus and checked every seat.</b><br><small style="color:var(--muted)">No child is left on board.</small></span></label>
     ${onBus.length ? `<div class="warnbox">⚠️ ${onBus.map(k => esc(k.name)).join(', ')} still marked on the bus. Drop them off before ending the trip.</div>` : ''}
     <button class="btn btn-p bigbtn" style="margin-top:12px" ${onBus.length ? 'disabled' : ''} onclick="endTrip('${r.id}')">End trip</button>`;
-  return `${back}<div class="row between"><h1>${esc(r.name)}</h1><span class="live">LIVE</span></div><p class="lead">Stop ${tr.stop + 1} of ${r.stops.length} · started ${tr.startedAt}</p>
+  return `${back}<div class="row between"><h1>${esc(routeName(r))}</h1><span class="live">LIVE</span></div><p class="lead">Stop ${tr.stop + 1} of ${r.stops.length} · started ${tr.startedAt}</p>
   <div class="prog" style="margin-bottom:18px"><div style="width:${(tr.stop / (r.stops.length - 1)) * 100}%"></div></div>
   <div class="card stopcard"><div class="lbl">${st.school ? '🏫 School' : 'Current stop'} · ${act === 'pick' ? 'Pick up' : 'Drop off'}</div><h2>${esc(st.name)}</h2><div style="color:var(--muted);font-size:14px;margin-bottom:6px">Scheduled ${st.time}</div>
     ${here.length ? here.map(kidRow).join('') : '<div class="empty" style="padding:14px">No students at this stop</div>'}
@@ -407,7 +407,7 @@ function startTrip(rid) {
   kids.forEach(k => { if (isAbsent(k.id, today(), r.session)) tr.kids[k.id] = 'absent'; });
   S.trips[rid] = tr; logTrip(tr, `Trip started by ${d.name}`);
   kids.filter(k => !tr.kids[k.id]).forEach(k => notify(k.parent, `🚌 ${d.name} has started the ${r.session === 'AM' ? 'morning' : 'afternoon'} trip (${by(S.buses, r.bus)?.plate}).`));
-  notify(r.op, `▶ ${d.name} started ${r.name} at ${tr.startedAt}.`);
+  notify(r.op, `▶ ${d.name} started ${routeName(r)} at ${tr.startedAt}.`);
   arrive(r, tr);
   save(); render(); toast('Trip started. Parents notified.');
 }
@@ -426,7 +426,7 @@ function kidDo(rid, kid, st) {
     absent: `⚠️ ${first} was not at ${stop} and is marked absent. Call the driver if this is unexpected.`
   }[st];
   notify(k.parent, msg); logTrip(tr, `${k.name}: ${st} at ${stop}`);
-  if (st === 'absent') notify(r.op, `⚠️ ${k.name} was a no-show at ${stop} (${r.name}).`);
+  if (st === 'absent') notify(r.op, `⚠️ ${k.name} was a no-show at ${stop} (${routeName(r)}).`);
   save(); render();
 }
 function nextStop(rid) {
@@ -454,14 +454,14 @@ function endTrip(rid) {
   const r = by(S.routes, rid), tr = S.trips[rid];
   tr.status = 'done'; tr.endedAt = nowTime(); tr.checked = true; logTrip(tr, 'Bus checked. Trip ended.');
   const kids = routeKids(r), n = kids.filter(k => kidStatus(tr, k.id) === 'dropped').length;
-  notify(r.op, `✅ ${me().name} finished ${r.name} at ${tr.endedAt}. ${n} dropped off, bus checked.`);
+  notify(r.op, `✅ ${me().name} finished ${routeName(r)} at ${tr.endedAt}. ${n} dropped off, bus checked.`);
   save(); render(); toast('Trip completed. Terima kasih!');
 }
 
 VIEWS.driver.students = () => {
   const rs = myRoutes();
   return `<h1>Students</h1><p class="lead">Who rides with you, and how to reach their parents.</p>
-  ${rs.map(r => `<div class="card"><h3>${r.session === 'AM' ? '🌅' : '🌇'} ${esc(r.name)}</h3>${routeKids(r).map(k => {
+  ${rs.map(r => `<div class="card"><h3>${r.session === 'AM' ? '🌅' : '🌇'} ${esc(routeName(r))}</h3>${routeKids(r).map(k => {
     const p = by(S.parents, k.parent), ab = isAbsent(k.id, today(), r.session);
     return `<div class="kid">${av(k.name)}<div class="grow"><b>${esc(k.name)}</b><small>${esc(k.stop)} · ${esc(k.grade)} · ${esc(p?.gender)}: ${esc(p?.name)}</small></div>
       ${ab ? '<span class="badge b-bad">Not riding today</span>' : ''}<a class="btn btn-o btn-sm" style="text-decoration:none" href="tel:${esc((p?.phone || '').replace(/\s/g, ''))}" aria-label="Call ${esc(p?.name)}">📞</a></div>`;
@@ -469,7 +469,7 @@ VIEWS.driver.students = () => {
 };
 VIEWS.driver.alerts = notesView;
 
-/* ================= GROUP CHAT (parents + driver) ================= */
+/* ================= MESSAGE (group chats: parents + driver) ================= */
 function myChatRoutes() {
   if (!me()) return [];
   if (me().role === 'driver') return myRoutes();
@@ -481,12 +481,12 @@ function chatView() {
   const rs = myChatRoutes();
   if (openChat && rs.some(r => r.id === openChat)) return chatRoom(by(S.routes, openChat));
   openChat = null;
-  return `<h1>Group chat</h1><p class="lead">${me().role === 'driver' ? 'Talk to the parents on your routes.' : 'Talk to your driver and the other parents on the same bus.'}</p>
+  return `<h1>Message</h1><p class="lead">${me().role === 'driver' ? 'Talk to the parents on your routes.' : 'Talk to your driver and the other parents on the same bus.'}</p>
   <div class="card chat-list">${rs.length ? rs.map(r => {
     const last = chatMsgs(r.id).slice(-1)[0], un = chatUnread(me().id, r.id), m = chatMembers(r);
     return `<button class="chat-row" onclick="openChat='${r.id}';render()"><div class="chat-ic">${chatIcon(r)}</div>
-      <div class="grow"><b>${chatName(r)}</b><small style="display:block">${esc(r.name)} · ${m.parents.length} parents + driver</small>
-      <small style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${last ? esc(last.name.split(' ')[0]) + ': ' + esc(last.text) : 'No messages yet'}</small></div>
+      <div class="grow"><b>${chatName(r)}</b><small style="display:block">${esc(routeName(r))} · ${m.parents.length} parents + driver</small>
+      <small style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${last ? esc(last.name.split(' ')[0]) + ': ' + (last.text ? esc(last.text) : '📷 Photo') : 'No messages yet'}</small></div>
       <div style="text-align:right">${last ? `<small style="color:var(--muted)">${last.time}</small>` : ''}${un ? `<div><span class="badge b-bad">${un}</span></div>` : ''}</div></button>`;
   }).join('') : `<div class="empty">${me().role === 'driver' ? 'No routes assigned yet.' : 'Your chats appear once your child is on a bus route.'}</div>`}</div>`;
 }
@@ -497,21 +497,39 @@ function chatRoom(r) {
   const body = msgs.map(x => {
     const day = x.date === today() ? 'Today' : x.date; const sep = day !== lastDay ? `<div class="day">${day}</div>` : ''; lastDay = day;
     const mine_ = x.from === me().id;
-    return `${sep}<div class="msg ${mine_ ? 'me' : ''}">${mine_ ? '' : `<div class="who ${x.role === 'driver' ? 'drv' : ''}">${esc(x.name)}${x.role === 'driver' ? ' · Driver 🚌' : ''}</div>`}${esc(x.text)}<div class="tm">${x.time}</div></div>`;
+    return `${sep}<div class="msg ${mine_ ? 'me' : ''}">${mine_ ? '' : `<div class="who ${x.role === 'driver' ? 'drv' : ''}">${esc(x.name)}${x.role === 'driver' ? ' · Driver 🚌' : ''}</div>`}${x.photo ? `<img src="${x.photo}" class="msg-photo" alt="Photo from ${esc(x.name)}" onclick="showPhoto(this.src)">` : ''}${x.text ? `<div>${esc(x.text)}</div>` : ''}<div class="tm">${x.time}</div></div>`;
   }).join('');
   return `<div class="card chat-box">
     <div class="chat-head"><button class="btn btn-g btn-sm" style="padding:6px 8px" aria-label="Back to chats" onclick="openChat=null;render()">←</button><div class="chat-ic" style="width:38px;height:38px;font-size:18px">${chatIcon(r)}</div>
       <div class="grow"><b>${chatName(r)}</b><small style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.driver?.name || 'No driver')} (driver), ${m.parents.map(p => esc(p.name.split(' ')[0])).join(', ')}</small></div></div>
     <div class="chat-msgs" id="chatMsgs">${body || '<div class="empty">Say hello 👋</div>'}</div>
-    <form class="chat-send" onsubmit="sendChat('${r.id}');return false"><input class="inp" id="chatInput" placeholder="Type a message" autocomplete="off" maxlength="1000"><button class="btn btn-p" type="submit">Send</button></form>
+    <div class="quick" role="group" aria-label="Quick messages">${quickFor(r).map((q, i) => `<button type="button" onclick="quickSend('${r.id}',${i})">${esc(q)}</button>`).join('')}</div>
+    <form class="chat-send" onsubmit="sendChat('${r.id}');return false">
+      <label class="attach" title="Attach a photo" aria-label="Attach a photo"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.1l-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg><input type="file" accept="image/*" style="display:none" onchange="attachChat('${r.id}',this)"></label>
+      <input class="inp" id="chatInput" placeholder="Type a message" autocomplete="off" maxlength="1000"><button class="btn btn-p" type="submit">Send</button></form>
   </div>`;
+}
+function quickFor(r) { return me().role === 'driver' ? [...QUICK_MSGS.driver, r.session === 'AM' ? QUICK_MSGS.driverAM : QUICK_MSGS.driverPM] : QUICK_MSGS.parent; }
+function postChat(rid, text, photo) {
+  const m = { id: uid(), route: rid, from: me().id, role: me().role, name: me().name, text, photo: photo || null, date: today(), time: nowTime() };
+  S.chats.push(m); markChatRead(me().id, rid); save();
+  if (photo && !(localStorage.getItem(STORE_KEY) || '').includes(m.id)) { S.chats.pop(); save(); toast('That photo is too large for this demo. Try a smaller one.'); return false; }
+  return true;
 }
 function sendChat(rid) {
   const el = document.getElementById('chatInput'), text = el.value.trim();
   if (!text) return;
-  S.chats.push({ id: uid(), route: rid, from: me().id, role: me().role, name: me().name, text, date: today(), time: nowTime() });
-  markChatRead(me().id, rid); save(); render();
+  postChat(rid, text); render();
   const i = document.getElementById('chatInput'); if (i) i.focus();
+}
+function quickSend(rid, i) { postChat(rid, quickFor(by(S.routes, rid))[i]); render(); }
+function attachChat(rid, input) {
+  const f = input.files && input.files[0]; if (!f) return;
+  const caption = (document.getElementById('chatInput')?.value || '').trim();
+  shrinkPhoto(f, data => {
+    if (!data) { toast("Couldn't read that photo"); return; }
+    if (postChat(rid, caption, data)) { render(); }
+  });
 }
 VIEWS.parent.chat = chatView;
 VIEWS.driver.chat = chatView;
@@ -525,7 +543,7 @@ VIEWS.parent.report = () => {
   ${kids.length ? `<div class="card"><div class="form">
     <div class="full"><label class="f" for="incType">What's the problem? *</label><select class="inp" id="incType">${INC_TYPES.map(x => `<option>${x}</option>`).join('')}</select></div>
     <div><label class="f" for="incKid">Child</label><select class="inp" id="incKid">${kids.map(k => `<option value="${k.id}">${esc(k.name)}</option>`).join('')}</select></div>
-    <div><label class="f" for="incRoute">Which trip / bus</label><select class="inp" id="incRoute">${rs.map(r => `<option value="${r.id}">${esc(r.name)} · ${esc(by(S.buses, r.bus)?.plate || '')}</option>`).join('')}<option value="">Not sure</option></select></div>
+    <div><label class="f" for="incRoute">Which trip / bus</label><select class="inp" id="incRoute">${rs.map(r => `<option value="${r.id}">${esc(routeName(r))} · ${esc(by(S.buses, r.bus)?.plate || '')}</option>`).join('')}<option value="">Not sure</option></select></div>
     <div class="full"><label class="f" for="incText">What happened? *</label><textarea class="inp" id="incText" placeholder="e.g. The seat belt on the 3rd row, left side, doesn't lock."></textarea></div>
     <div class="full"><label class="f" for="incPhotoIn">Photo (optional)</label>
       <div class="row"><label class="btn btn-o btn-sm" style="cursor:pointer">📷 ${incPhoto ? 'Change photo' : 'Add photo'}<input id="incPhotoIn" type="file" accept="image/*" capture="environment" style="display:none" onchange="pickIncPhoto(this)"></label>
@@ -539,7 +557,7 @@ VIEWS.parent.report = () => {
 function incCard(i) {
   const k = by(S.children, i.child), r = by(S.routes, i.route), b = by(S.buses, i.bus);
   return `<div class="card inc ${i.status}"><div class="row between"><b>${esc(i.category)}</b>${INC_STATUS[i.status]}</div>
-    <div style="font-size:13px;color:var(--muted);margin:2px 0 8px">${i.date === today() ? 'Today' : i.date} ${i.time}${k ? ' · ' + esc(k.name) : ''}${r ? ' · ' + esc(r.name) : ''}${b ? ' · ' + esc(b.plate) : ''}</div>
+    <div style="font-size:13px;color:var(--muted);margin:2px 0 8px">${i.date === today() ? 'Today' : i.date} ${i.time}${k ? ' · ' + esc(k.name) : ''}${r ? ' · ' + esc(routeName(r)) : ''}${b ? ' · ' + esc(b.plate) : ''}</div>
     <div style="font-size:15px">${esc(i.text)}</div>
     ${i.photo ? `<img src="${i.photo}" class="inc-photo" style="margin-top:10px" alt="Photo attached to report" onclick="showPhoto(this.src)">` : ''}
     ${(i.replies || []).map(x => `<div class="reply"><b>${esc(x.name)}</b> · <small style="color:var(--muted)">${x.time}</small><div>${esc(x.text)}</div></div>`).join('')}
@@ -554,7 +572,7 @@ function sendReport() {
   const rid = fv('incRoute'), r = by(S.routes, rid), k = by(S.children, fv('incKid'));
   const inc = { id: uid(), op: k.op, from: me().id, child: k.id, route: rid || null, bus: r?.bus || null, category: fv('incType'), text: fv('incText'), photo: incPhoto, date: today(), time: nowTime(), status: 'open', replies: [] };
   S.incidents.unshift(inc);
-  notify(k.op, `🚨 New incident from ${me().name}: ${inc.category}${r ? ' (' + (by(S.buses, r.bus)?.plate || r.name) + ')' : ''}.`);
+  notify(k.op, `🚨 New incident from ${me().name}: ${inc.category}${r ? ' (' + (by(S.buses, r.bus)?.plate || routeName(r)) + ')' : ''}.`);
   try { save(); } catch (e) {}
   if (!localStorage.getItem(STORE_KEY)?.includes(inc.id)) { inc.photo = null; save(); toast('Photo too large to keep in this demo. Report sent without it.'); }
   incPhoto = null; render(); toast('Report sent to your bus operator'); scrollTo(0, document.body.scrollHeight);
