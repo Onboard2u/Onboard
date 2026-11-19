@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en" data-app="app">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Onboard — Safe School Bus Rides</title>
+<meta name="theme-color" content="#FF8110">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Onboard">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="stylesheet" href="assets/onboard.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="in">
+    <button class="logo" onclick="go('landing')" aria-label="Onboard home"><img src="icons/logo.png" alt="Onboard"></button>
+    <div class="spacer"></div>
+    <select class="lang" id="lang" onchange="setLang(this.value)" aria-label="Language">
+      <option value="en">EN</option><option value="bm">BM</option><option value="cn">中文</option>
+    </select>
+    <div id="authArea"></div>
+  </div>
+</header>
+
+<div id="view"></div>
+<nav class="bnav" id="bnav"></nav>
+
+<script src="assets/onboard.js"></script>
+<script>
+/* ================= language (landing page) ================= */
+const T = {
+  en:{login:"Login",logout:"Logout",tag:"#1 school bus app in Malaysia",h1:"Taking the school bus will never be the same again",
+      hp:"Our mission: to make sure no child is ever forgotten. Peace of mind on every journey, for parents, drivers and bus operators.",
+      parent:"Parents Sign Up",op:"Bus Operator Sign Up",driver:"Bus driver? Log in here",
+      featT:"One app, three parties",featS:"Everyone on the school run stays in sync.",
+      f1:"For parents",f1d:"Follow the bus live, get a message when your child boards and arrives, and tell the driver when they're not riding.",
+      f2:"For drivers",f2d:"A simple stop-by-stop checklist. Tick each child on and off, and the app won't let a trip end until every seat is checked.",
+      f3:"For bus operators",f3d:"Manage buses, drivers, routes and students, and watch every trip live.",
+      howT:"How it works",ctaT:"Ready for stress-free school runs?",start:"Get started",
+      s1:"Operator sets up",s1d:"The operator adds buses, drivers and routes in the Onboard portal.",
+      s2:"Parent joins",s2d:"The operator adds each child. Parents sign up with the same email and see them straight away.",
+      s3:"Driver runs the trip",s3d:"The driver ticks each child on and off at every stop.",
+      s4:"Everyone knows",s4d:"Parents and the operator see each step as it happens."},
+  bm:{login:"Log Masuk",logout:"Log Keluar",tag:"Aplikasi bas sekolah #1 di Malaysia",h1:"Menaiki bas sekolah tidak akan sama lagi",
+      hp:"Misi kami: memastikan tiada anak yang dilupakan. Tenang setiap perjalanan, untuk ibu bapa, pemandu dan pengendali bas.",
+      parent:"Daftar Ibu Bapa",op:"Daftar Pengendali Bas",driver:"Pemandu bas? Log masuk di sini",
+      featT:"Satu aplikasi, tiga pihak",featS:"Semua yang terlibat sentiasa dimaklumkan.",
+      f1:"Untuk ibu bapa",f1d:"Jejak bas secara langsung, terima mesej bila anak naik dan tiba, dan maklumkan pemandu bila anak tidak naik.",
+      f2:"Untuk pemandu",f2d:"Senarai semak ikut hentian. Tanda setiap anak naik dan turun, dan perjalanan tidak boleh tamat selagi bas belum disemak.",
+      f3:"Untuk pengendali bas",f3d:"Urus bas, pemandu, laluan dan murid, dan pantau setiap perjalanan secara langsung.",
+      howT:"Cara ia berfungsi",ctaT:"Sedia untuk perjalanan ke sekolah tanpa risau?",start:"Mula sekarang",
+      s1:"Pengendali sediakan",s1d:"Pengendali tambah bas, pemandu dan laluan dalam portal Onboard.",
+      s2:"Ibu bapa sertai",s2d:"Pengendali tambah setiap anak. Ibu bapa daftar dengan e-mel yang sama dan terus nampak anak mereka.",
+      s3:"Pemandu jalankan perjalanan",s3d:"Pemandu tanda setiap anak naik dan turun di setiap hentian.",
+      s4:"Semua tahu",s4d:"Ibu bapa dan pengendali nampak setiap langkah serta-merta."},
+  cn:{login:"登录",logout:"退出",tag:"马来西亚第一校车应用",h1:"搭校车从此不一样",
+      hp:"我们的使命：确保没有孩子被遗忘。让家长、司机和校车业者每一程都安心。",
+      parent:"家长注册",op:"校车业者注册",driver:"校车司机？在此登录",
+      featT:"一个应用，三方连接",featS:"接送过程中的每个人都同步掌握。",
+      f1:"家长",f1d:"实时追踪校车，孩子上车和抵达时收到通知，并在孩子不搭车时告知司机。",
+      f2:"司机",f2d:"按站点的简单清单。为每个孩子标记上下车，检查完所有座位前无法结束行程。",
+      f3:"校车业者",f3d:"管理校车、司机、路线和学生，并实时查看每趟行程。",
+      howT:"如何运作",ctaT:"准备好轻松上学了吗？",start:"立即开始",
+      s1:"业者设置",s1d:"业者在 Onboard 管理平台添加校车、司机和路线。",
+      s2:"家长加入",s2d:"业者添加每位孩子，家长用相同电邮注册即可看到孩子。",
+      s3:"司机出车",s3d:"司机在每个站点为孩子标记上下车。",
+      s4:"大家都知道",s4d:"家长和业者即时看到每一步。"}
+};
+let lang = 'en';
+try { lang = localStorage.getItem('onboard_lang') || 'en'; } catch (e) {}
+const t = k => (T[lang] && T[lang][k]) || T.en[k] || k;
+function setLang(l) { lang = l; try { localStorage.setItem('onboard_lang', l); } catch (e) {} render(); }
+
+/* ================= routing ================= */
+let route = 'landing', tab = null, openRoute = null, openChat = null;
+function go(r, tb) { route = r; tab = tb || null; openChat = null; window.scrollTo(0, 0); render(); }
+/* when another tab changes data, re-render but keep whatever the user is typing */
+window.onSync = () => {
+  const keep = {}, act = document.activeElement;
+  document.querySelectorAll('#view input[id],#view textarea[id],#view select[id]').forEach(el => { if (el.type !== 'file') keep[el.id] = el.value; });
+  const sel = act && act.id && act.setSelectionRange ? [act.id, act.selectionStart, act.selectionEnd] : act && act.id ? [act.id] : null;
+  render();
+  Object.entries(keep).forEach(([id, v]) => { const el = document.getElementById(id); if (el && el.type !== 'file') el.value = v; });
+  if (sel) { const el = document.getElementById(sel[0]); if (el) { el.focus(); if (sel.length > 1 && el.setSelectionRange) try { el.setSelectionRange(sel[1], sel[2]); } catch (e) {} } }
+};
+const me = () => USER;
+
+const NAVS = {
+  parent: [
+    { id: 'home', ic: '🏠', label: 'Home' },
+    { id: 'kids', ic: '👧', label: 'My children', short: 'Children' },
+    { id: 'chat', ic: '💬', label: 'Message', badge: () => chatBadge() },
+    { id: 'report', ic: '🚨', label: 'Report incident', short: 'Report' },
+    { id: 'alerts', ic: '🔔', label: 'Notifications', short: 'Alerts', badge: () => unreadFor(me().id) }
+  ],
+  driver: [
+    { id: 'today', ic: '🚌', label: "Today's trips", short: 'Trips' },
+    { id: 'students', ic: '👧', label: 'Students' },
+    { id: 'chat', ic: '💬', label: 'Message', badge: () => chatBadge() },
+    { id: 'alerts', ic: '🔔', label: 'Notifications', short: 'Alerts', badge: () => unreadFor(me().id) }
+  ]
+};
+
+function render() {
+  document.getElementById('lang').value = lang;
+  document.documentElement.lang = lang === 'cn' ? 'zh' : lang === 'bm' ? 'ms' : 'en';
+  const a = document.getElementById('authArea');
+  a.innerHTML = me()
+    ? `<div class="row" style="gap:6px"><button class="btn btn-o btn-sm" onclick="go('${me().role}')"><span>🏠</span><span class="btn-label">My dashboard</span></button><button class="btn btn-g btn-sm" onclick="logout()">${t('logout')}</button></div>`
+    : `<button class="btn btn-p btn-sm" onclick="openLogin()">${t('login')}</button>`;
+  const v = document.getElementById('view'), bn = document.getElementById('bnav');
+  if (me() && route === 'landing' && !render.landed) { render.landed = true; route = me().role; }
+  if (route === 'landing') { v.innerHTML = landing(); bn.innerHTML = ''; bn.style.display = 'none'; return; }
+  if (!me() || me().role !== route) { route = 'landing'; return render(); }
+  bn.style.display = '';
+  const cfg = NAVS[route];
+  if (!tab) tab = cfg[0].id;
+  const page = VIEWS[route][tab]();
+  const items = cfg.map(n => ({ ...n, b: n.badge ? n.badge() : 0 }));
+  const side = items.map(n => `<button class="nav-i ${tab === n.id ? 'on' : ''}" onclick="go('${route}','${n.id}')"><span class="ic">${n.ic}</span>${n.label}${n.b ? `<span class="badge b-bad">${n.b}</span>` : ''}</button>`).join('');
+  bn.innerHTML = items.map(n => `<button class="${tab === n.id ? 'on' : ''}" onclick="go('${route}','${n.id}')"><span class="ic">${n.ic}</span>${n.short || n.label}${n.b ? '<span class="dotb"></span>' : ''}</button>`).join('');
+  const sub = route === 'parent' ? 'Parent' : 'Driver · ' + (by(S.buses, me().bus)?.plate || '');
+  v.innerHTML = `<div class="shell"><aside class="side"><div class="who"><b>${esc(me().name)}</b><span>${esc(sub)}</span></div>${side}
+    <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px"><button class="nav-i" onclick="if(confirm('Reset all demo data?')){resetDemo();render();toast('Demo data reset')}"><span class="ic">↺</span>Reset demo data</button></div></aside>
+    <main class="main">${page}</main></div>`;
+  const box = document.getElementById('chatMsgs'); if (box) box.scrollTop = box.scrollHeight;
+}
+
+/* ================= landing ================= */
+function landing() {
+  return `
+  <section class="hero"><div class="in">
+    <div>
+      <span class="pill">🇲🇾 ${t('tag')}</span>
+      <h1>${t('h1')}</h1>
+      <p>${t('hp')}</p>
+      <div class="ctas">
+        <button class="btn btn-p" onclick="openSignup()">${t('parent')}</button>
+        <a class="btn btn-o" href="admin.html#signup" style="text-decoration:none">${t('op')}</a>
+      </div>
+      <button class="link" onclick="openLogin('driver')">🚌 ${t('driver')} →</button>
+      <div class="demo-row"><span>Try the demo:</span>
+        <button class="btn btn-o btn-sm" onclick="demoLogin('parent')">👨‍👩‍👧 Parent demo</button>
+        <button class="btn btn-o btn-sm" onclick="demoLogin('driver')">🧑‍✈️ Driver demo</button>
+        <a class="btn btn-o btn-sm" style="text-decoration:none" href="admin.html#demo">🏢 Operator demo</a>
+      </div>
+    </div>
+    <div class="phone" aria-hidden="true"><div class="scr">
+      <div style="font-weight:800;color:var(--accent);margin-bottom:10px">Good morning, Aisyah 👋</div>
+      <div class="mini-card"><b>🚌 Bus is 4 min away</b>Faizal · WXY 2231<div class="prog" style="margin-top:8px;height:6px"><div style="width:68%"></div></div></div>
+      <div class="mini-card"><b>✅ Adam boarded</b>06:47 · Jalan SS2/24</div>
+      <div class="mini-card"><b>🏫 Adam arrived at school</b>07:19 · SK Taman Megah</div>
+      <div class="mini-card"><b>🏠 Adam dropped home</b>13:50 · Jalan SS2/24</div>
+    </div></div>
+  </div></section>
+
+  <section class="section">
+    <h2>${t('featT')}</h2><p class="sub">${t('featS')}</p>
+    <div class="grid3">
+      <div class="feat"><div class="ic">👨‍👩‍👧</div><h3>${t('f1')}</h3><p>${t('f1d')}</p></div>
+      <div class="feat"><div class="ic">🧑‍✈️</div><h3>${t('f2')}</h3><p>${t('f2d')}</p></div>
+      <div class="feat"><div class="ic">🏢</div><h3>${t('f3')}</h3><p>${t('f3d')}</p></div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    <h2>${t('howT')}</h2><p class="sub">&nbsp;</p>
+    <div class="grid4">${[1, 2, 3, 4].map(i => `<div class="feat step"><div class="num">${i}</div><h3>${t('s' + i)}</h3><p>${t('s' + i + 'd')}</p></div>`).join('')}</div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    <div class="cta-band"><h2>${t('ctaT')}</h2>
+      <div class="row"><button class="btn btn-n" onclick="openSignup()">${t('start')}</button><a class="btn btn-o" href="admin.html#signup" style="text-decoration:none">${t('op')}</a></div>
+    </div>
+  </section>
+
+  <footer><div class="in"><span style="display:flex;align-items:center;gap:14px"><img src="icons/logo-white.png" alt="Onboard" style="height:22px"> © 2026 Onboard</span>
+  <span><a style="color:#cbbfb5" href="admin.html">Operator portal →</a></span></div></footer>`;
+}
+
+/* ================= login / sign up ================= */
+let loginRole = 'parent';
+function openLogin(role) {
+  loginRole = role || loginRole;
+  const demo = loginRole === 'parent' ? 'parent@demo.my' : 'driver@demo.my';
+  modal(`<img src="icons/logo.png" alt="Onboard" style="height:26px;margin-bottom:14px"><h2>${t('login')}</h2><p class="lead">Welcome back. Who's logging in?</p>
+  <div class="role-pick">
+    <button class="${loginRole === 'parent' ? 'on' : ''}" onclick="openLogin('parent')"><b>👨‍👩‍👧 Parent</b><small>Track and manage your children</small></button>
+    <button class="${loginRole === 'driver' ? 'on' : ''}" onclick="openLogin('driver')"><b>🧑‍✈️ Driver</b><small>Run today's trips</small></button>
+  </div>
+  <div style="display:grid;gap:12px">
+    <div><label class="f" for="lEmail">Email</label><input class="inp" id="lEmail" type="email" value="${demo}"></div>
+    <div><label class="f" for="lPass">Password</label><input class="inp" id="lPass" type="password" value="demo1234"></div>
+    <button class="btn btn-p" onclick="doLogin()">${t('login')}</button>
+    ${loginRole === 'parent' ? `<button class="btn btn-g btn-sm" onclick="openSignup()">Don't have an account? Register here</button>` : `<p style="font-size:13px;color:var(--muted);text-align:center">Driver accounts are created by your bus operator.</p>`}
+  </div>
+  <div class="demo">Demo mode: any password works. ${loginRole === 'driver' ? 'Second driver: kumar@demo.my' : ''}</div>`);
+}
+function doLogin() {
+  const email = fv('lEmail').toLowerCase();
+  if (!email) { toast('Enter your email'); return; }
+  if (loginRole === 'parent') {
+    const p = S.parents.find(x => x.email.toLowerCase() === email);
+    if (!p) { toast('No parent account with that email'); return; }
+    setUser({ role: 'parent', id: p.id, name: p.name });
+  } else {
+    const d = S.drivers.find(x => x.email.toLowerCase() === email);
+    if (!d) { toast('No driver account with that email. Ask your operator to add you.'); return; }
+    setUser({ role: 'driver', id: d.id, name: d.name, op: d.op, bus: d.bus });
+  }
+  closeModal(); go(USER.role); toast('Welcome, ' + USER.name);
+}
+function logout() { setUser(null); go('landing'); }
+function demoLogin(role) {
+  if (role === 'parent') { const p = by(S.parents, 'p1') || S.parents[0]; setUser({ role: 'parent', id: p.id, name: p.name }); }
+  else { const d = by(S.drivers, 'd1') || S.drivers[0]; setUser({ role: 'driver', id: d.id, name: d.name, op: d.op, bus: d.bus }); }
+  go(role); toast('Welcome, ' + USER.name);
+}
+
+function openSignup() {
+  modal(`<h2>Sign up as parent</h2><p class="lead">Use the email you gave your bus operator, so your children appear straight away.</p>
+  <div class="form">
+    <div class="full"><label class="f" for="sName">Name *</label><input class="inp" id="sName" placeholder="Enter your name"></div>
+    <div class="full"><label class="f" for="sEmail">Email *</label><input class="inp" id="sEmail" type="email" placeholder="Enter your email"></div>
+    <div><label class="f" for="sGender">I am the child's</label><select class="inp" id="sGender"><option>Dad</option><option>Mom</option><option>Guardian</option></select></div>
+    <div><label class="f" for="sPhone">Mobile *</label><div class="tel"><span>🇲🇾 +60</span><input class="inp" id="sPhone" type="tel" placeholder="12-345 6789"></div></div>
+    <div class="full"><label class="f" for="sPass">Password *</label><input class="inp" id="sPass" type="password" placeholder="At least 8 characters"></div>
+    <div class="full"><button class="btn btn-p" style="width:100%" onclick="doSignup()">Sign up for free</button></div>
+    <div class="full" style="text-align:center"><button class="btn btn-g btn-sm" onclick="openLogin('parent')">Already have an account? Log in</button></div>
+  </div>`);
+}
+function doSignup() {
+  if (!need(['sName', 'sEmail', 'sPhone', 'sPass'])) return;
+  if (fv('sPass').length < 8) { toast('Password needs at least 8 characters'); return; }
+  const existing = S.parents.find(p => p.email.toLowerCase() === fv('sEmail').toLowerCase());
+  if (existing && !existing.invited) { toast('That email is already registered. Log in instead.'); return; }
+  const p = existing || { id: uid() };
+  Object.assign(p, { name: fv('sName'), email: fv('sEmail'), gender: fv('sGender'), phone: '+60 ' + fv('sPhone'), invited: false });
+  if (!existing) S.parents.push(p);
+  const n = S.children.filter(c => c.parent === p.id).length;
+  notify(p.id, n ? `Welcome to Onboard! Your bus operator has already added ${n} child${n > 1 ? 'ren' : ''}.` : 'Welcome to Onboard! Your children will appear here once your bus operator adds them with this email.'); save();
+  setUser({ role: 'parent', id: p.id, name: p.name });
+  closeModal(); go('parent'); toast('Account created');
+}
+
+/* ================= shared bits ================= */
+const VIEWS = { parent: {}, driver: {} };
+function notesView() {
+  const list = notesFor(me().id);
+  setTimeout(() => { if (unreadFor(me().id)) { markRead(me().id); } }, 1500);
+  return `<h1>Notifications</h1><p class="lead">Updates from your ${me().role === 'parent' ? 'bus operator and driver' : 'operator and parents'}.</p>
+  <div class="card">${list.length ? list.map(x => `<div class="list-i"><div class="grow"><b style="white-space:normal;font-weight:${x.read ? 500 : 700}">${esc(x.text)}</b><small>${x.date === today() ? 'Today' : x.date} · ${x.time}</small></div>${x.read ? '' : '<span class="badge b-bad">New</span>'}</div>`).join('') : '<div class="empty">No notifications yet</div>'}</div>`;
+}
+function timeline(r, trip, highlightStop, tagText) {
+  const running = trip.status === 'running', done = trip.status === 'done';
+  return `<div class="tl">${r.stops.map((s, i) => {
+    const cls = done || (running && i < trip.stop) ? 'done' : running && i === trip.stop ? 'now' : '';
+    const tag = s.name === highlightStop ? `<span class="tl-tag">${esc(tagText)}</span>` : s.school ? '<span class="tl-tag">🏫 School</span>' : '';
+    return `<div class="tl-i ${cls}"><div class="tl-dot">${cls === 'now' ? '🚌' : cls === 'done' ? '<span style="color:#fff;font-size:12px">✓</span>' : ''}</div>
+      <div class="tl-b"><b>${esc(s.name)}</b>${tag}<small>${s.time}${cls === 'now' ? ' · Bus is here' : ''}</small></div></div>`;
+  }).join('')}</div>`;
+}
+
+/* ================= PARENT ================= */
+const myKids = () => S.children.filter(c => c.parent === me().id);
+
+function currentRouteFor(k) {
+  const rs = k.routes.map(id => by(S.routes, id)).filter(Boolean);
+  if (!rs.length) return null;
+  const running = rs.find(r => tripFor(r.id).status === 'running');
+  if (running) return running;
+  const pm = new Date().getHours() >= 11;
+  const pref = rs.find(r => r.session === (pm ? 'PM' : 'AM') && tripFor(r.id).status !== 'done');
+  return pref || rs.find(r => tripFor(r.id).status !== 'done') || rs[rs.length - 1];
+}
+
+VIEWS.parent.home = () => {
+  const kids = myKids(), riding = kids.filter(k => k.op && k.routes.length);
+  return `<h1>Hi, ${esc(me().name.split(' ')[0])} 👋</h1><p class="lead">Here's today's school run.</p>
+  ${riding.length ? riding.map(trackCard).join('') : kids.length ? `<div class="card"><h3>No trips yet</h3><p class="lead" style="margin:0">Your bus operator hasn't put ${kids.length > 1 ? 'your children' : esc(kids[0].name)} on a route yet.</p></div>` : `<div class="card"><h3>No children yet</h3><p class="lead" style="margin:0">Your bus operator adds your children. Ask them to use your email, <b>${esc(by(S.parents, me().id)?.email)}</b>, and they'll appear here.</p></div>`}
+  <div class="card"><div class="row between"><h3 style="margin:0">🔔 Latest updates</h3><button class="btn btn-g btn-sm" onclick="go('parent','alerts')">See all</button></div>
+  ${notesFor(me().id).slice(0, 4).map(x => `<div class="list-i"><div class="grow"><b style="white-space:normal;font-weight:${x.read ? 500 : 700}">${esc(x.text)}</b><small>${x.time}</small></div></div>`).join('') || '<div class="empty">No updates yet</div>'}</div>`;
+};
+function trackCard(k) {
+  const r = currentRouteFor(k), trip = tripFor(r.id), d = by(S.drivers, r.driver), b = by(S.buses, r.bus);
+  const st = kidStatus(trip, k.id), absentPlanned = isAbsent(k.id, today(), r.session);
+  let head;
+  if (trip.status === 'running') head = `<span class="live">LIVE</span>`;
+  else if (trip.status === 'done') head = '<span class="badge b-ok">Trip completed</span>';
+  else head = `<span class="badge b-n">Starts ${r.stops[0].time}</span>`;
+  let line = '';
+  if (absentPlanned && trip.status !== 'done') line = `<div class="demo" style="margin-top:0">You told the driver ${esc(k.name.split(' ')[0])} won't ride this trip.</div>`;
+  else if (trip.status === 'running') line = `<div class="row between" style="margin-bottom:8px"><span>${esc(k.name.split(' ')[0])}:</span>${kidBadge(r, trip, k)}</div>`;
+  else if (trip.status === 'done') line = `<div class="row between" style="margin-bottom:8px"><span>${esc(k.name.split(' ')[0])}:</span>${kidBadge(r, trip, k)}</div>`;
+  return `<div class="card">
+    <div class="row between" style="margin-bottom:12px"><div class="row" style="gap:10px">${av(k.name)}<div><b>${esc(k.name)}</b><div style="font-size:13px;color:var(--muted)">${esc(routeName(r))}</div></div></div>${head}</div>
+    ${line}
+    ${timeline(r, trip, k.stop, r.session === 'AM' ? 'Pick-up' : 'Drop-off')}
+    <div class="row between" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
+      <div class="row" style="gap:10px">${av(d?.name || '?', 34)}<div style="font-size:14px"><b>${esc(d?.name || 'No driver')}</b><div style="color:var(--muted)">${esc(b?.plate || '')} · ${esc(b?.model || '')}</div></div></div>
+      <div class="row" style="gap:8px">${d ? `<a class="btn btn-o btn-sm" style="text-decoration:none" href="tel:${esc(d.phone.replace(/\s/g, ''))}">📞 Call</a>` : ''}<button class="btn btn-o btn-sm" onclick="openAbsence('${k.id}')">Not riding?</button></div>
+    </div></div>`;
+}
+function openAbsence(kid) {
+  const k = by(S.children, kid);
+  modal(`<h2>${esc(k.name)} won't be riding</h2><p class="lead">The driver and your operator are told straight away, so the bus won't wait at your stop.</p>
+  <div class="form">
+    <div><label class="f" for="abDate">When</label><select class="inp" id="abDate"><option value="${today()}">Today</option><option value="${tomorrow()}">Tomorrow</option></select></div>
+    <div><label class="f" for="abSes">Which trip</label><select class="inp" id="abSes"><option value="ALL">Both trips</option><option value="AM">Morning only</option><option value="PM">Afternoon only</option></select></div>
+    <div class="full"><label class="f" for="abWhy">Reason (optional)</label><input class="inp" id="abWhy" placeholder="e.g. Sick, parent sending"></div>
+    <div class="full row"><button class="btn btn-p" onclick="saveAbsence('${kid}')">Tell the driver</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div>
+  </div>`);
+}
+function saveAbsence(kid) {
+  const k = by(S.children, kid), date = fv('abDate'), ses = fv('abSes'), why = fv('abWhy');
+  S.absences.push({ id: uid(), child: kid, date, session: ses, reason: why });
+  const when = (date === today() ? 'today' : 'tomorrow') + (ses === 'ALL' ? '' : ses === 'AM' ? ' (morning)' : ' (afternoon)');
+  k.routes.map(id => by(S.routes, id)).filter(r => r && (ses === 'ALL' || r.session === ses)).forEach(r => {
+    if (date === today()) { const tr = S.trips[r.id]; if (tr && tr.date === today() && tr.status === 'running' && kidStatus(tr, kid) === 'waiting') tr.kids[kid] = 'absent'; }
+    notify(r.driver, `📅 ${k.name} won't ride ${when}.${why ? ' Reason: ' + why : ''}`);
+  });
+  if (k.op) notify(k.op, `📅 ${by(S.parents, k.parent).name}: ${k.name} won't ride ${when}.`);
+  save(); closeModal(); render(); toast('Driver informed');
+}
+
+VIEWS.parent.kids = () => {
+  const kids = myKids();
+  return `<h1>My children</h1><p class="lead">Added by your bus operator. Contact them to change routes or stops.</p>
+  ${kids.length ? kids.map(k => {
+    const op = by(S.operators, k.op), abs = S.absences.filter(a => a.child === k.id && a.date >= today());
+    return `<div class="card"><div class="row">${av(k.name, 48)}<div class="grow"><b style="font-size:17px">${esc(k.name)}</b><small>${esc(k.grade)} · ${esc(k.school)}</small></div></div>
+      <div style="margin-top:14px;font-size:14px;display:grid;gap:6px">
+        <div>📍 Pick-up / drop-off: <b>${esc(k.stop)}</b></div>
+        <div>🚌 ${op ? `<b>${esc(op.name)}</b> · ${k.routes.map(id => `<span class="chip">${esc(routeName(by(S.routes, id)) || '')}</span>`).join('') || 'no route yet'}` : 'Not on a bus'}</div>
+        ${op ? `<div>📞 Operator: <a href="tel:${esc(op.phone.replace(/\s/g, ''))}">${esc(op.phone)}</a></div>` : ''}
+        ${abs.map(a => `<div>📅 Not riding ${a.date === today() ? 'today' : 'tomorrow'}${a.session === 'ALL' ? '' : a.session === 'AM' ? ' (morning)' : ' (afternoon)'} <button class="btn btn-g btn-sm" onclick="undoAbsence('${a.id}')">Undo</button></div>`).join('')}
+      </div>
+      ${k.routes.length ? `<div style="margin-top:12px"><button class="btn btn-o btn-sm" onclick="openAbsence('${k.id}')">Report absence</button></div>` : ''}
+    </div>`;
+  }).join('') : `<div class="card empty">No children yet. Your bus operator adds them using your email, <b>${esc(by(S.parents, me().id)?.email)}</b>.</div>`}`;
+};
+function undoAbsence(id) {
+  const a = S.absences.find(x => x.id === id), k = by(S.children, a.child);
+  S.absences = S.absences.filter(x => x.id !== id);
+  k.routes.forEach(rid => { const r = by(S.routes, rid); if (r) notify(r.driver, `✅ ${k.name} WILL ride ${a.date === today() ? 'today' : 'tomorrow'} after all.`); });
+  save(); render(); toast('Absence removed. Driver told.');
+}
+VIEWS.parent.alerts = notesView;
+
+/* ================= DRIVER ================= */
+const myRoutes = () => S.routes.filter(r => r.driver === me().id).sort((a, b) => a.stops[0].time.localeCompare(b.stops[0].time));
+
+VIEWS.driver.today = () => {
+  if (openRoute && by(S.routes, openRoute)?.driver === me().id) return tripScreen(by(S.routes, openRoute));
+  const rs = myRoutes(), b = by(S.buses, by(S.drivers, me().id)?.bus);
+  return `<h1>Selamat pagi, ${esc(me().name.split(' ')[0])} 👋</h1><p class="lead">${b ? `Your bus today: <b>${esc(b.plate)}</b> · ${esc(b.model)}` : 'No bus assigned yet. Contact your operator.'}</p>
+  ${rs.length ? rs.map(r => {
+    const tr = tripFor(r.id), kids = routeKids(r), abs = kids.filter(k => isAbsent(k.id, today(), r.session)).length;
+    const status = tr.status === 'running' ? '<span class="live">IN PROGRESS</span>' : tr.status === 'done' ? '<span class="badge b-ok">Completed ' + (tr.endedAt || '') + '</span>' : `<span class="badge b-n">Starts ${r.stops[0].time}</span>`;
+    return `<div class="card"><div class="row between"><div><b style="font-size:17px">${r.session === 'AM' ? '🌅' : '🌇'} ${esc(routeName(r))}</b><div style="color:var(--muted);font-size:14px">${r.stops.length} stops · ${kids.length} students${abs ? ` · <span style="color:var(--bad)">${abs} absent</span>` : ''}</div></div>${status}</div>
+      <button class="btn ${tr.status === 'running' ? 'btn-p' : tr.status === 'done' ? 'btn-o' : 'btn-n'} bigbtn" style="margin-top:14px" onclick="openRoute='${r.id}';render();scrollTo(0,0)">${tr.status === 'running' ? 'Continue trip →' : tr.status === 'done' ? 'View summary' : 'Open trip'}</button></div>`;
+  }).join('') : '<div class="card empty">No routes assigned to you yet.</div>'}`;
+};
+
+function tripScreen(r) {
+  const tr = tripFor(r.id), kids = routeKids(r);
+  const back = `<button class="btn btn-g btn-sm" style="padding-left:0;margin-bottom:8px" onclick="openRoute=null;render()">← All trips</button>`;
+  const counts = { waiting: 0, boarded: 0, dropped: 0, absent: 0 };
+  kids.forEach(k => counts[tr.status === 'idle' && isAbsent(k.id, today(), r.session) ? 'absent' : kidStatus(tr, k.id)]++);
+  const stats = `<div class="grid4" style="margin-bottom:18px">
+    <div class="stat"><div class="v">${counts.waiting}</div><div class="l">To pick up</div></div><div class="stat"><div class="v">${counts.boarded}</div><div class="l">On bus</div></div>
+    <div class="stat"><div class="v">${counts.dropped}</div><div class="l">Dropped off</div></div><div class="stat"><div class="v">${counts.absent}</div><div class="l">Absent</div></div></div>`;
+
+  if (tr.status === 'idle') {
+    return `${back}<h1>${esc(routeName(r))}</h1><p class="lead">${kids.length} students · first stop ${r.stops[0].time}</p>${stats}
+    <div class="card"><h3>Route</h3>${timeline(r, tr)}</div>
+    <div class="card"><h3>Students</h3>${kids.map(k => `<div class="kid">${av(k.name)}<div class="grow"><b>${esc(k.name)}</b><small>${esc(k.stop)} · ${esc(k.grade)}</small></div>${isAbsent(k.id, today(), r.session) ? '<span class="badge b-bad">Parent: not riding</span>' : ''}</div>`).join('') || '<div class="empty">No students on this route</div>'}</div>
+    <button class="btn btn-p bigbtn" onclick="startTrip('${r.id}')">▶ Start trip</button>`;
+  }
+  if (tr.status === 'done') {
+    return `${back}<h1>${esc(routeName(r))}</h1><p class="lead">Completed ${tr.startedAt} – ${tr.endedAt}. Bus checked, every child accounted for. ✅</p>${stats}
+    <div class="card"><h3>Trip log</h3>${tr.log.slice().reverse().map(l => `<div class="list-i"><div class="grow"><b style="white-space:normal;font-weight:500">${esc(l.text)}</b><small>${l.time}</small></div></div>`).join('')}</div>`;
+  }
+  // running
+  const st = r.stops[tr.stop], act = stopAction(r, tr.stop), here = stopKids(r, tr, tr.stop), last = tr.stop === r.stops.length - 1;
+  const onBus = kids.filter(k => kidStatus(tr, k.id) === 'boarded');
+  const kidRow = k => {
+    const s = kidStatus(tr, k.id);
+    let acts = kidBadge(r, tr, k);
+    if (act === 'pick' && s === 'waiting') acts = `<button class="btn btn-ok" onclick="kidDo('${r.id}','${k.id}','boarded')">Board</button><button class="btn btn-bad" onclick="kidDo('${r.id}','${k.id}','absent')">Absent</button>`;
+    if (act === 'drop' && s === 'boarded') acts = `<button class="btn btn-n" onclick="kidDo('${r.id}','${k.id}','dropped')">Drop off</button>`;
+    if (s === 'absent' && isAbsent(k.id, today(), r.session)) acts = '<span class="badge b-bad">Parent: not riding</span>';
+    return `<div class="kid">${av(k.name)}<div class="grow"><b>${esc(k.name)}</b><small>${act === 'drop' && st.school ? 'Drop at school' : esc(k.stop)} · ${esc(by(S.parents, k.parent)?.phone || '')}</small></div><div class="acts">${acts}</div></div>`;
+  };
+  let footer;
+  if (!last) footer = `<button class="btn btn-p bigbtn" style="margin-top:14px" onclick="nextStop('${r.id}')">Depart to ${esc(r.stops[tr.stop + 1].name)} →</button>`;
+  else footer = `<label class="check"><input type="checkbox" id="chk" ${onBus.length ? 'disabled' : ''}><span><b>I have walked the whole bus and checked every seat.</b><br><small style="color:var(--muted)">No child is left on board.</small></span></label>
+    ${onBus.length ? `<div class="warnbox">⚠️ ${onBus.map(k => esc(k.name)).join(', ')} still marked on the bus. Drop them off before ending the trip.</div>` : ''}
+    <button class="btn btn-p bigbtn" style="margin-top:12px" ${onBus.length ? 'disabled' : ''} onclick="endTrip('${r.id}')">End trip</button>`;
+  return `${back}<div class="row between"><h1>${esc(routeName(r))}</h1><span class="live">LIVE</span></div><p class="lead">Stop ${tr.stop + 1} of ${r.stops.length} · started ${tr.startedAt}</p>
+  <div class="prog" style="margin-bottom:18px"><div style="width:${(tr.stop / (r.stops.length - 1)) * 100}%"></div></div>
+  <div class="card stopcard"><div class="lbl">${st.school ? '🏫 School' : 'Current stop'} · ${act === 'pick' ? 'Pick up' : 'Drop off'}</div><h2>${esc(st.name)}</h2><div style="color:var(--muted);font-size:14px;margin-bottom:6px">Scheduled ${st.time}</div>
+    ${here.length ? here.map(kidRow).join('') : '<div class="empty" style="padding:14px">No students at this stop</div>'}
+    ${footer}
+  </div>
+  ${stats}
+  <div class="card"><h3>Route</h3>${timeline(r, tr)}</div>`;
+}
+function logTrip(tr, text) { tr.log.push({ time: nowTime(), text }); }
+function startTrip(rid) {
+  const r = by(S.routes, rid), kids = routeKids(r), d = me();
+  const tr = { date: today(), status: 'running', stop: 0, kids: {}, log: [], startedAt: nowTime() };
+  kids.forEach(k => { if (isAbsent(k.id, today(), r.session)) tr.kids[k.id] = 'absent'; });
+  S.trips[rid] = tr; logTrip(tr, `Trip started by ${d.name}`);
+  kids.filter(k => !tr.kids[k.id]).forEach(k => notify(k.parent, `🚌 ${d.name} has started the ${r.session === 'AM' ? 'morning' : 'afternoon'} trip (${by(S.buses, r.bus)?.plate}).`));
+  notify(r.op, `▶ ${d.name} started ${routeName(r)} at ${tr.startedAt}.`);
+  arrive(r, tr);
+  save(); render(); toast('Trip started. Parents notified.');
+}
+function arrive(r, tr) {
+  const st = r.stops[tr.stop]; logTrip(tr, `Arrived at ${st.name}`);
+  if (stopAction(r, tr.stop) === 'pick' && !st.school) stopKids(r, tr, tr.stop).filter(k => kidStatus(tr, k.id) === 'waiting')
+    .forEach(k => notify(k.parent, `📍 The bus has arrived at ${st.name}. Please bring ${k.name.split(' ')[0]} out now.`));
+}
+function kidDo(rid, kid, st) {
+  const r = by(S.routes, rid), tr = S.trips[rid], k = by(S.children, kid), stop = r.stops[tr.stop].name;
+  tr.kids[kid] = st;
+  const first = k.name.split(' ')[0];
+  const msg = {
+    boarded: `✅ ${first} boarded the bus at ${stop} (${nowTime()}).`,
+    dropped: r.session === 'AM' ? `🏫 ${first} arrived safely at ${stop} (${nowTime()}).` : `🏠 ${first} was dropped off at ${stop} (${nowTime()}).`,
+    absent: `⚠️ ${first} was not at ${stop} and is marked absent. Call the driver if this is unexpected.`
+  }[st];
+  notify(k.parent, msg); logTrip(tr, `${k.name}: ${st} at ${stop}`);
+  if (st === 'absent') notify(r.op, `⚠️ ${k.name} was a no-show at ${stop} (${routeName(r)}).`);
+  save(); render();
+}
+function nextStop(rid) {
+  const r = by(S.routes, rid), tr = S.trips[rid], act = stopAction(r, tr.stop);
+  const pending = stopKids(r, tr, tr.stop).filter(k => kidStatus(tr, k.id) === (act === 'pick' ? 'waiting' : 'boarded'));
+  if (pending.length && !nextStop.ok) {
+    modal(`<h2>${act === 'pick' ? 'Not everyone has boarded' : 'Children still on the bus'}</h2>
+    <p class="lead">${pending.map(k => '<b>' + esc(k.name) + '</b>').join(', ')} ${act === 'pick' ? 'has not boarded at this stop.' : 'should get off here.'}</p>
+    ${act === 'pick' ? `<div class="row"><button class="btn btn-bad" onclick="${pending.map(k => `kidDo('${rid}','${k.id}','absent');`).join('')}closeModal();nextStop.ok=1;nextStop('${rid}');nextStop.ok=0">Mark absent and go</button><button class="btn btn-g" onclick="closeModal()">Wait</button></div>`
+      : `<div class="row"><button class="btn btn-o" onclick="closeModal();nextStop.ok=1;nextStop('${rid}');nextStop.ok=0">Keep on bus and go</button><button class="btn btn-g" onclick="closeModal()">Wait</button></div>
+         <div class="demo">If no adult is at the stop, keep the child on the bus and call the parent.</div>`}`);
+    return;
+  }
+  logTrip(tr, `Departed ${r.stops[tr.stop].name}`);
+  tr.stop++;
+  const nxt = tr.stop + 1 < r.stops.length ? r.stops[tr.stop + 1] : null;
+  arrive(r, tr);
+  if (nxt && !nxt.school && stopAction(r, tr.stop + 1) === 'pick') stopKids(r, tr, tr.stop + 1).filter(k => kidStatus(tr, k.id) === 'waiting')
+    .forEach(k => notify(k.parent, `⏱ The bus is one stop away from ${nxt.name}. Get ${k.name.split(' ')[0]} ready.`));
+  save(); render(); scrollTo(0, 0);
+}
+function endTrip(rid) {
+  const chk = document.getElementById('chk');
+  if (!chk || !chk.checked) { toast('Walk the bus and tick the check first'); chk && chk.closest('label').scrollIntoView({ block: 'center' }); return; }
+  const r = by(S.routes, rid), tr = S.trips[rid];
+  tr.status = 'done'; tr.endedAt = nowTime(); tr.checked = true; logTrip(tr, 'Bus checked. Trip ended.');
+  const kids = routeKids(r), n = kids.filter(k => kidStatus(tr, k.id) === 'dropped').length;
+  notify(r.op, `✅ ${me().name} finished ${routeName(r)} at ${tr.endedAt}. ${n} dropped off, bus checked.`);
+  save(); render(); toast('Trip completed. Terima kasih!');
+}
+
+VIEWS.driver.students = () => {
+  const rs = myRoutes();
+  return `<h1>Students</h1><p class="lead">Who rides with you, and how to reach their parents.</p>
+  ${rs.map(r => `<div class="card"><h3>${r.session === 'AM' ? '🌅' : '🌇'} ${esc(routeName(r))}</h3>${routeKids(r).map(k => {
+    const p = by(S.parents, k.parent), ab = isAbsent(k.id, today(), r.session);
+    return `<div class="kid">${av(k.name)}<div class="grow"><b>${esc(k.name)}</b><small>${esc(k.stop)} · ${esc(k.grade)} · ${esc(p?.gender)}: ${esc(p?.name)}</small></div>
+      ${ab ? '<span class="badge b-bad">Not riding today</span>' : ''}<a class="btn btn-o btn-sm" style="text-decoration:none" href="tel:${esc((p?.phone || '').replace(/\s/g, ''))}" aria-label="Call ${esc(p?.name)}">📞</a></div>`;
+  }).join('') || '<div class="empty">No students</div>'}</div>`).join('') || '<div class="card empty">No routes assigned yet.</div>'}`;
+};
+VIEWS.driver.alerts = notesView;
+
+/* ================= MESSAGE (group chats: parents + driver) ================= */
+function myChatRoutes() {
+  if (!me()) return [];
+  if (me().role === 'driver') return myRoutes();
+  const ids = [...new Set(myKids().flatMap(k => k.routes))];
+  return ids.map(id => by(S.routes, id)).filter(Boolean).sort((a, b) => a.session.localeCompare(b.session));
+}
+const chatBadge = () => myChatRoutes().reduce((n, r) => n + chatUnread(me().id, r.id), 0);
+function chatView() {
+  const rs = myChatRoutes();
+  if (openChat && rs.some(r => r.id === openChat)) return chatRoom(by(S.routes, openChat));
+  openChat = null;
+  return `<h1>Message</h1><p class="lead">${me().role === 'driver' ? 'Talk to the parents on your routes.' : 'Talk to your driver and the other parents on the same bus.'}</p>
+  <div class="card chat-list">${rs.length ? rs.map(r => {
+    const last = chatMsgs(r.id).slice(-1)[0], un = chatUnread(me().id, r.id), m = chatMembers(r);
+    return `<button class="chat-row" onclick="openChat='${r.id}';render()"><div class="chat-ic">${chatIcon(r)}</div>
+      <div class="grow"><b>${chatName(r)}</b><small style="display:block">${esc(routeName(r))} · ${m.parents.length} parents + driver</small>
+      <small style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${last ? esc(last.name.split(' ')[0]) + ': ' + (last.text ? esc(last.text) : '📷 Photo') : 'No messages yet'}</small></div>
+      <div style="text-align:right">${last ? `<small style="color:var(--muted)">${last.time}</small>` : ''}${un ? `<div><span class="badge b-bad">${un}</span></div>` : ''}</div></button>`;
+  }).join('') : `<div class="empty">${me().role === 'driver' ? 'No routes assigned yet.' : 'Your chats appear once your child is on a bus route.'}</div>`}</div>`;
+}
+function chatRoom(r) {
+  markChatRead(me().id, r.id);
+  const msgs = chatMsgs(r.id), m = chatMembers(r);
+  let lastDay = '';
+  const body = msgs.map(x => {
+    const day = x.date === today() ? 'Today' : x.date; const sep = day !== lastDay ? `<div class="day">${day}</div>` : ''; lastDay = day;
+    const mine_ = x.from === me().id;
+    return `${sep}<div class="msg ${mine_ ? 'me' : ''}">${mine_ ? '' : `<div class="who ${x.role === 'driver' ? 'drv' : ''}">${esc(x.name)}${x.role === 'driver' ? ' · Driver 🚌' : ''}</div>`}${x.photo ? `<img src="${x.photo}" class="msg-photo" alt="Photo from ${esc(x.name)}" onclick="showPhoto(this.src)">` : ''}${x.text ? `<div>${esc(x.text)}</div>` : ''}<div class="tm">${x.time}</div></div>`;
+  }).join('');
+  return `<div class="card chat-box">
+    <div class="chat-head"><button class="btn btn-g btn-sm" style="padding:6px 8px" aria-label="Back to chats" onclick="openChat=null;render()">←</button><div class="chat-ic" style="width:38px;height:38px;font-size:18px">${chatIcon(r)}</div>
+      <div class="grow"><b>${chatName(r)}</b><small style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(m.driver?.name || 'No driver')} (driver), ${m.parents.map(p => esc(p.name.split(' ')[0])).join(', ')}</small></div></div>
+    <div class="chat-msgs" id="chatMsgs">${body || '<div class="empty">Say hello 👋</div>'}</div>
+    <div class="quick" role="group" aria-label="Quick messages">${quickFor(r).map((q, i) => `<button type="button" onclick="quickSend('${r.id}',${i})">${esc(q)}</button>`).join('')}</div>
+    <form class="chat-send" onsubmit="sendChat('${r.id}');return false">
+      <label class="attach" title="Attach a photo" aria-label="Attach a photo"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.1l-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg><input type="file" accept="image/*" style="display:none" onchange="attachChat('${r.id}',this)"></label>
+      <input class="inp" id="chatInput" placeholder="Type a message" autocomplete="off" maxlength="1000"><button class="btn btn-p" type="submit">Send</button></form>
+  </div>`;
+}
+function quickFor(r) { return me().role === 'driver' ? [...QUICK_MSGS.driver, r.session === 'AM' ? QUICK_MSGS.driverAM : QUICK_MSGS.driverPM] : QUICK_MSGS.parent; }
+function postChat(rid, text, photo) {
+  const m = { id: uid(), route: rid, from: me().id, role: me().role, name: me().name, text, photo: photo || null, date: today(), time: nowTime() };
+  S.chats.push(m); markChatRead(me().id, rid); save();
+  if (photo && !savedOK(m.id)) { S.chats.pop(); save(); toast('That photo is too large for this demo. Try a smaller one.'); return false; }
+  return true;
+}
+function sendChat(rid) {
+  const el = document.getElementById('chatInput'), text = el.value.trim();
+  if (!text) return;
+  postChat(rid, text); render();
+  const i = document.getElementById('chatInput'); if (i) i.focus();
+}
+function quickSend(rid, i) { postChat(rid, quickFor(by(S.routes, rid))[i]); render(); }
+function attachChat(rid, input) {
+  const f = input.files && input.files[0]; if (!f) return;
+  const caption = (document.getElementById('chatInput')?.value || '').trim();
+  shrinkPhoto(f, data => {
+    if (!data) { toast("Couldn't read that photo"); return; }
+    if (postChat(rid, caption, data)) { render(); }
+  });
+}
+VIEWS.parent.chat = chatView;
+VIEWS.driver.chat = chatView;
+
+/* ================= INCIDENT REPORTS (parent -> operator) ================= */
+let incPhoto = null;
+VIEWS.parent.report = () => {
+  const kids = myKids().filter(k => k.op), mineInc = S.incidents.filter(i => i.from === me().id);
+  const rs = [...new Set(kids.flatMap(k => k.routes))].map(id => by(S.routes, id)).filter(Boolean);
+  return `<h1>Report an incident</h1><p class="lead">Seen something unsafe on the bus? Your bus operator is alerted straight away.</p>
+  ${kids.length ? `<div class="card"><div class="form">
+    <div class="full"><label class="f" for="incType">What's the problem? *</label><select class="inp" id="incType">${INC_TYPES.map(x => `<option>${x}</option>`).join('')}</select></div>
+    <div><label class="f" for="incKid">Child</label><select class="inp" id="incKid">${kids.map(k => `<option value="${k.id}">${esc(k.name)}</option>`).join('')}</select></div>
+    <div><label class="f" for="incRoute">Which trip / bus</label><select class="inp" id="incRoute">${rs.map(r => `<option value="${r.id}">${esc(routeName(r))} · ${esc(by(S.buses, r.bus)?.plate || '')}</option>`).join('')}<option value="">Not sure</option></select></div>
+    <div class="full"><label class="f" for="incText">What happened? *</label><textarea class="inp" id="incText" placeholder="e.g. The seat belt on the 3rd row, left side, doesn't lock."></textarea></div>
+    <div class="full"><label class="f" for="incPhotoIn">Photo (optional)</label>
+      <div class="row"><label class="btn btn-o btn-sm" style="cursor:pointer">📷 ${incPhoto ? 'Change photo' : 'Add photo'}<input id="incPhotoIn" type="file" accept="image/*" capture="environment" style="display:none" onchange="pickIncPhoto(this)"></label>
+      ${incPhoto ? `<img src="${incPhoto}" class="inc-photo" alt="Selected photo" onclick="showPhoto(incPhoto)"><button class="btn btn-g btn-sm" onclick="incPhoto=null;window.onSync()">Remove</button>` : ''}</div></div>
+    <div class="full"><button class="btn btn-p" onclick="sendReport()">Send report</button></div>
+  </div></div>
+  <div class="card" style="background:#fdeaea"><b style="color:var(--bad)">Emergency?</b><div style="font-size:14px;margin-top:4px">If a child is in danger, call 999 first.</div><div class="row" style="margin-top:10px"><a class="btn" style="text-decoration:none;background:var(--bad);color:#fff" href="tel:999">📞 Call 999</a></div></div>` : '<div class="card empty">You can report incidents once your child is on a bus.</div>'}
+  <h3 style="margin:24px 0 12px">My reports</h3>
+  ${mineInc.length ? mineInc.map(i => incCard(i)).join('') : '<div class="card empty">No reports yet</div>'}`;
+};
+function incCard(i) {
+  const k = by(S.children, i.child), r = by(S.routes, i.route), b = by(S.buses, i.bus);
+  return `<div class="card inc ${i.status}"><div class="row between"><b>${esc(i.category)}</b>${INC_STATUS[i.status]}</div>
+    <div style="font-size:13px;color:var(--muted);margin:2px 0 8px">${i.date === today() ? 'Today' : i.date} ${i.time}${k ? ' · ' + esc(k.name) : ''}${r ? ' · ' + esc(routeName(r)) : ''}${b ? ' · ' + esc(b.plate) : ''}</div>
+    <div style="font-size:15px">${esc(i.text)}</div>
+    ${i.photo ? `<img src="${i.photo}" class="inc-photo" style="margin-top:10px" alt="Photo attached to report" onclick="showPhoto(this.src)">` : ''}
+    ${(i.replies || []).map(x => `<div class="reply"><b>${esc(x.name)}</b> · <small style="color:var(--muted)">${x.time}</small><div>${esc(x.text)}</div></div>`).join('')}
+  </div>`;
+}
+function pickIncPhoto(input) {
+  const f = input.files && input.files[0]; if (!f) return;
+  shrinkPhoto(f, data => { if (!data) { toast("Couldn't read that photo"); return; } incPhoto = data; window.onSync(); });
+}
+function sendReport() {
+  if (!need(['incText'])) return;
+  const rid = fv('incRoute'), r = by(S.routes, rid), k = by(S.children, fv('incKid'));
+  const inc = { id: uid(), op: k.op, from: me().id, child: k.id, route: rid || null, bus: r?.bus || null, category: fv('incType'), text: fv('incText'), photo: incPhoto, date: today(), time: nowTime(), status: 'open', replies: [] };
+  S.incidents.unshift(inc);
+  notify(k.op, `🚨 New incident from ${me().name}: ${inc.category}${r ? ' (' + (by(S.buses, r.bus)?.plate || routeName(r)) + ')' : ''}.`);
+  try { save(); } catch (e) {}
+  if (!savedOK(inc.id)) { inc.photo = null; save(); toast('Photo too large to keep in this demo. Report sent without it.'); }
+  incPhoto = null; render(); toast('Report sent to your bus operator'); scrollTo(0, document.body.scrollHeight);
+}
+
+/* ================= boot ================= */if (USER && USER.role === 'driver' && !by(S.drivers, USER.id)) setUser(null);
+if (USER && USER.role === 'parent' && !by(S.parents, USER.id)) setUser(null);
+render();
+</script>
+</body>
+</html>

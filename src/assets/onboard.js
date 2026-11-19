@@ -103,6 +103,9 @@ function load() {
   if (!S || S.version !== 5) S = SEED();
 }
 function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) { } }
+/* some browsers and previews block storage; the app still works, it just forgets data on reload */
+function storedRaw() { try { return localStorage.getItem(STORE_KEY); } catch (e) { return null; } }
+function savedOK(id) { const raw = storedRaw(); return raw === null || raw.includes(id); }
 function resetDemo() { S = SEED(); save(); }
 load();
 

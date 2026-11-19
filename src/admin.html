@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en" data-app="admin">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Onboard Operator Portal</title>
+<meta name="theme-color" content="#FF8110">
+<link rel="icon" type="image/png" href="icons/favicon-64.png">
+<link rel="stylesheet" href="assets/onboard.css">
+<style>
+.auth{min-height:calc(100vh - 57px);display:grid;place-items:center;padding:24px 16px;background:radial-gradient(900px 400px at 80% 0%,#ffe2c4 0%,rgba(255,226,196,0) 60%),var(--bg)}
+.auth .card{width:100%;max-width:440px;padding:28px}
+.trip-card .prog{margin:10px 0 8px}
+.kidgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px 14px;margin-top:10px}
+.kidgrid div{display:flex;justify-content:space-between;align-items:center;font-size:14px;gap:8px}
+.mini-stops{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.mini-stops span{font-size:12px;background:#f6ede4;border-radius:8px;padding:3px 8px}
+.mini-stops span.s{background:var(--tint);color:var(--accent);font-weight:700}
+td select.inp{padding:6px 8px;min-width:120px}
+</style>
+</head>
+<body class="portal">
+
+<header class="topbar">
+  <div class="in">
+    <a class="logo" href="admin.html" aria-label="Onboard operator portal"><img src="icons/logo.png" alt="Onboard"></a>
+    <span class="badge b-y" style="margin-left:4px">Operator</span>
+    <div class="spacer"></div>
+    <div id="authArea"></div>
+  </div>
+</header>
+<div id="view"></div>
+<nav class="bnav" id="bnav"></nav>
+
+<script src="assets/onboard.js"></script>
+<script>
+let tab = 'dash', authMode = location.hash === '#signup' ? 'signup' : 'login', liveOpen = {};
+const me = () => USER;
+const op = () => by(S.operators, USER.id);
+const mine = list => list.filter(x => x.op === USER.id);
+window.onSync = () => {
+  const keep = {}, act = document.activeElement;
+  document.querySelectorAll('#view input[id],#view textarea[id],#view select[id]').forEach(el => keep[el.id] = el.value);
+  render();
+  Object.entries(keep).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
+  if (act && act.id) { const el = document.getElementById(act.id); if (el) el.focus(); }
+};
+
+const NAV = [
+  { id: 'dash', ic: '📊', label: 'Dashboard', short: 'Home' },
+  { id: 'live', ic: '🛰️', label: 'Live trips', short: 'Live', badge: () => mine(S.routes).filter(r => tripFor(r.id).status === 'running').length, live: true },
+  { id: 'students', ic: '👧', label: 'Students' },
+  { id: 'routes', ic: '🗺️', label: 'Routes' },
+  { id: 'drivers', ic: '🧑‍✈️', label: 'Drivers' },
+  { id: 'buses', ic: '🚐', label: 'Buses' },
+  { id: 'incidents', ic: '🚨', label: 'Incidents', badge: () => S.incidents.filter(i => i.op === USER.id && i.status === 'open').length },
+  { id: 'announce', ic: '📣', label: 'Announcements' },
+  { id: 'notifs', ic: '🔔', label: 'Notifications', short: 'Alerts', badge: () => unreadFor(USER.id) },
+  { id: 'settings', ic: '⚙️', label: 'Settings' }
+];
+const MOBILE_NAV = ['dash', 'live', 'students', 'incidents', 'more'];
+
+function go(t) { tab = t; scrollTo(0, 0); render(); }
+
+function render() {
+  const a = document.getElementById('authArea'), v = document.getElementById('view'), bn = document.getElementById('bnav');
+  if (!USER || !op()) {
+    setUser(null);
+    a.innerHTML = `<a class="btn btn-g btn-sm" href="index.html" style="text-decoration:none">Parent &amp; driver app →</a>`;
+    bn.innerHTML = ''; bn.style.display = 'none';
+    v.innerHTML = authMode === 'signup' ? signupView() : loginView();
+    return;
+  }
+  a.innerHTML = `<div class="row" style="gap:6px"><span class="hide-m" style="font-size:14px;color:var(--muted)">${esc(op().name)}</span><button class="btn btn-g btn-sm" onclick="logout()">Logout</button></div>`;
+  bn.style.display = '';
+  const items = NAV.map(n => ({ ...n, b: n.badge ? n.badge() : 0 }));
+  const side = items.map(n => `<button class="nav-i ${tab === n.id ? 'on' : ''}" onclick="go('${n.id}')"><span class="ic">${n.ic}</span>${n.label}${n.b ? `<span class="badge ${n.live ? 'b-ok' : 'b-bad'}">${n.b}</span>` : ''}</button>`).join('');
+  bn.innerHTML = MOBILE_NAV.map(id => {
+    if (id === 'more') { const on = !['dash', 'live', 'students', 'incidents'].includes(tab); return `<button class="${on ? 'on' : ''}" onclick="openMore()"><span class="ic">☰</span>More</button>`; }
+    const n = items.find(x => x.id === id);
+    return `<button class="${tab === id ? 'on' : ''}" onclick="go('${id}')"><span class="ic">${n.ic}</span>${n.short || n.label}${n.b ? '<span class="dotb"' + (n.live ? ' style="background:var(--ok)"' : '') + '></span>' : ''}</button>`;
+  }).join('');
+  v.innerHTML = `<div class="shell"><aside class="side"><div class="who"><b>${esc(op().name)}</b><span>${esc(op().owner)} · Operator</span></div>${side}
+    <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px"><button class="nav-i" onclick="if(confirm('Reset all demo data?')){resetDemo();render();toast('Demo data reset')}"><span class="ic">↺</span>Reset demo data</button></div></aside>
+    <main class="main">${VIEWS[tab]()}</main></div>`;
+}
+function openMore() {
+  modal(`<h2>More</h2><div style="display:grid;gap:4px;margin-top:12px">${NAV.filter(n => !['dash', 'live', 'students', 'incidents'].includes(n.id)).map(n => `<button class="nav-i" onclick="closeModal();go('${n.id}')"><span class="ic">${n.ic}</span>${n.label}</button>`).join('')}
+  <button class="nav-i" onclick="closeModal();if(confirm('Reset all demo data?')){resetDemo();render()}"><span class="ic">↺</span>Reset demo data</button></div>`);
+}
+
+/* ================= auth ================= */
+function loginView() {
+  return `<div class="auth"><div class="card">
+    <img src="icons/logo.png" alt="Onboard" style="height:30px;margin-bottom:18px">
+    <h2 style="font-size:22px">Operator login</h2><p style="color:var(--muted);margin-bottom:18px">Manage your buses, drivers, routes and students.</p>
+    <div style="display:grid;gap:12px">
+      <div><label class="f" for="lEmail">Email</label><input class="inp" id="lEmail" type="email" value="ahmad@demo.my" placeholder="Enter your email"></div>
+      <div><label class="f" for="lPass">Password</label><input class="inp" id="lPass" type="password" value="demo1234" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="btn btn-p" onclick="doLogin()">Login</button>
+      <button class="btn btn-g btn-sm" onclick="authMode='signup';render()">New bus operator? Sign up here</button>
+    </div>
+    <div class="demo">Demo mode: any password works.</div>
+  </div></div>`;
+}
+function signupView() {
+  return `<div class="auth"><div class="card" style="max-width:560px">
+    <img src="icons/logo.png" alt="Onboard" style="height:30px;margin-bottom:18px">
+    <h2 style="font-size:22px">Bus operator sign up</h2><p style="color:var(--muted);margin-bottom:18px">Run your school bus service on Onboard.</p>
+    <div class="form">
+      <div class="full"><label class="f" for="oName">Company / service name *</label><input class="inp" id="oName"></div>
+      <div><label class="f" for="oOwner">Your name *</label><input class="inp" id="oOwner"></div>
+      <div><label class="f" for="oPhone">Mobile *</label><div class="tel"><span>🇲🇾 +60</span><input class="inp" id="oPhone" type="tel" placeholder="12-345 6789"></div></div>
+      <div class="full"><label class="f" for="oEmail">Email *</label><input class="inp" id="oEmail" type="email"></div>
+      <div class="full"><label class="f" for="oArea">Area *</label><input class="inp" id="oArea" placeholder="e.g. Petaling Jaya"></div>
+      <div class="full"><label class="f" for="oSchools">Schools you serve (comma separated) *</label><input class="inp" id="oSchools" placeholder="SK Taman Megah, SMK Damansara Jaya"></div>
+      <div class="full"><label class="f" for="oPass">Password *</label><input class="inp" id="oPass" type="password" placeholder="At least 8 characters"></div>
+      <div class="full"><button class="btn btn-p" style="width:100%" onclick="doSignup()">Create operator account</button></div>
+      <div class="full" style="text-align:center"><button class="btn btn-g btn-sm" onclick="authMode='login';render()">Already registered? Log in</button></div>
+    </div>
+  </div></div>`;
+}
+function doLogin() {
+  const email = fv('lEmail').toLowerCase(), o = S.operators.find(x => x.email.toLowerCase() === email);
+  if (!o) { toast('No operator account with that email'); return; }
+  setUser({ role: 'operator', id: o.id, name: o.name }); tab = 'dash'; history.replaceState(null, '', 'admin.html'); render(); toast('Welcome, ' + o.owner);
+}
+function doSignup() {
+  if (!need(['oName', 'oOwner', 'oPhone', 'oEmail', 'oArea', 'oSchools', 'oPass'])) return;
+  if (fv('oPass').length < 8) { toast('Password needs at least 8 characters'); return; }
+  if (S.operators.some(o => o.email.toLowerCase() === fv('oEmail').toLowerCase())) { toast('That email is already registered'); return; }
+  const o = { id: uid(), name: fv('oName'), owner: fv('oOwner'), phone: '+60 ' + fv('oPhone'), email: fv('oEmail'), area: fv('oArea'),
+    schools: fv('oSchools').split(',').map(s => s.trim()).filter(Boolean), status: 'approved' };
+  S.operators.push(o); notify(o.id, 'Welcome to Onboard! Start by adding your buses, then your drivers and routes.'); save();
+  setUser({ role: 'operator', id: o.id, name: o.name }); tab = 'buses'; history.replaceState(null, '', 'admin.html'); render(); toast('Account created');
+}
+function logout() { setUser(null); authMode = 'login'; render(); }
+
+/* ================= views ================= */
+const VIEWS = {};
+const tripBadge = tr => tr.status === 'running' ? '<span class="live">LIVE</span>' : tr.status === 'done' ? '<span class="badge b-ok">Completed</span>' : '<span class="badge b-n">Not started</span>';
+
+VIEWS.dash = () => {
+  const kids = mine(S.children), rs = mine(S.routes);
+  const running = rs.filter(r => tripFor(r.id).status === 'running'), done = rs.filter(r => tripFor(r.id).status === 'done');
+  const inc = S.incidents.filter(i => i.op === USER.id && i.status !== 'resolved');
+  const absToday = S.absences.filter(a => a.date === today() && kids.some(k => k.id === a.child));
+  return `<h1>Good ${new Date().getHours() < 12 ? 'morning' : 'afternoon'}, ${esc(op().owner.split(' ')[0])}</h1><p class="lead">${new Date().toLocaleDateString('en-MY', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+  ${inc.length ? `<div class="card" style="border-left:4px solid var(--bad)"><div class="row between"><h3 style="margin:0">🚨 Incidents to handle</h3><button class="btn btn-o btn-sm" onclick="go('incidents')">View all</button></div>${inc.slice(0, 3).map(i => `<div class="list-i"><div class="grow"><b>${esc(i.category)}</b><small>${esc(by(S.parents, i.from)?.name)} · ${esc(by(S.buses, i.bus)?.plate || 'Bus not given')} · ${i.date === today() ? 'Today' : i.date} ${i.time}</small></div>${INC_STATUS[i.status]}</div>`).join('')}</div>` : ''}
+  <div class="grid4" style="margin-bottom:18px">
+    <div class="stat"><div class="v">${kids.length}</div><div class="l">Students</div></div>
+    <div class="stat"><div class="v">${running.length}<span style="font-size:16px;color:var(--muted)"> / ${rs.length}</span></div><div class="l">Trips running now</div></div>
+    <div class="stat"><div class="v">${done.length}</div><div class="l">Trips done today</div></div>
+    <div class="stat"><div class="v">${absToday.length}</div><div class="l">Absences reported today</div></div>
+  </div>
+  <div class="grid3" style="grid-template-columns:1.3fr 1fr">
+    <div class="card"><div class="row between"><h3 style="margin:0">🛰️ Today's trips</h3><button class="btn btn-g btn-sm" onclick="go('live')">Open live view</button></div>
+      ${rs.map(r => { const tr = tripFor(r.id), d = by(S.drivers, r.driver); return `<div class="list-i"><div class="grow"><b>${esc(routeName(r))}</b><small>${esc(d?.name || 'No driver')} · ${tr.status === 'running' ? 'at ' + esc(r.stops[tr.stop].name) : r.stops[0].time}</small></div>${tripBadge(tr)}</div>`; }).join('') || '<div class="empty">No routes yet. <a href="#" onclick="go(\'routes\');return false">Add a route</a></div>'}</div>
+    <div>
+      <div class="card"><div class="row between"><h3 style="margin:0">💬 Latest activity</h3><button class="btn btn-g btn-sm" onclick="go('notifs')">See all</button></div>${notesFor(USER.id).slice(0, 4).map(n => `<div class="list-i"><div class="grow"><b style="white-space:normal;font-weight:${n.read ? 500 : 700};font-size:14px">${esc(n.text)}</b><small>${n.time}</small></div></div>`).join('') || '<div class="empty" style="padding:10px">Nothing yet</div>'}</div>
+      <div class="card"><h3>📅 Absent today</h3>${absToday.length ? absToday.map(a => { const k = by(S.children, a.child); return `<div class="list-i"><div class="grow"><b>${esc(k.name)}</b><small>${a.session === 'ALL' ? 'Both trips' : a.session === 'AM' ? 'Morning' : 'Afternoon'}${a.reason ? ' · ' + esc(a.reason) : ''}</small></div></div>`; }).join('') : '<div class="empty" style="padding:10px">Everyone is riding</div>'}</div>
+    </div>
+  </div>`;
+};
+
+VIEWS.live = () => {
+  const rs = mine(S.routes);
+  return `<div class="row between"><div><h1>Live trips</h1><p class="lead">Updates appear as drivers tick children on and off.</p></div></div>
+  ${rs.length ? rs.map(r => {
+    const tr = tripFor(r.id), d = by(S.drivers, r.driver), b = by(S.buses, r.bus), kids = routeKids(r);
+    const c = { waiting: 0, boarded: 0, dropped: 0, absent: 0 }; kids.forEach(k => c[tr.status === 'idle' && isAbsent(k.id, today(), r.session) ? 'absent' : kidStatus(tr, k.id)]++);
+    const pct = tr.status === 'done' ? 100 : tr.status === 'running' ? tr.stop / (r.stops.length - 1) * 100 : 0;
+    return `<div class="card trip-card"><div class="row between"><div><b style="font-size:17px">${esc(routeName(r))}</b><div style="font-size:14px;color:var(--muted)">${esc(d?.name || 'No driver')} · ${esc(b?.plate || 'No bus')}${tr.startedAt ? ' · started ' + tr.startedAt : ''}${tr.endedAt ? ' · ended ' + tr.endedAt : ''}</div></div>${tripBadge(tr)}</div>
+      <div class="prog"><div style="width:${pct}%"></div></div>
+      <div class="mini-stops">${r.stops.map((s, i) => `<span class="${tr.status === 'running' && i === tr.stop ? 's' : ''}">${tr.status === 'running' && i === tr.stop ? '🚌 ' : (tr.status === 'done' || (tr.status === 'running' && i < tr.stop)) ? '✓ ' : ''}${esc(s.name)} ${s.time}</span>`).join('')}</div>
+      <div class="row" style="gap:8px;font-size:14px"><span class="badge b-n">${c.waiting} waiting</span><span class="badge b-y">${c.boarded} on bus</span><span class="badge b-ok">${c.dropped} dropped</span><span class="badge b-bad">${c.absent} absent</span>
+        <button class="btn btn-g btn-sm" style="margin-left:auto" onclick="liveOpen['${r.id}']=!liveOpen['${r.id}'];render()">${liveOpen[r.id] ? 'Hide' : 'Show'} students</button></div>
+      ${liveOpen[r.id] ? `<div class="kidgrid">${kids.map(k => `<div><span>${esc(k.name)}</span>${tr.status === 'idle' && isAbsent(k.id, today(), r.session) ? ST_BADGE.absent : kidBadge(r, tr, k)}</div>`).join('')}</div>` : ''}
+      ${tr.status === 'done' ? `<div style="font-size:13px;color:var(--ok);margin-top:8px">✓ Driver confirmed the bus was checked and empty.</div>` : ''}
+    </div>`;
+  }).join('') : '<div class="card empty">No routes yet.</div>'}
+  <div class="demo">Tip: open the parent and driver app (index.html) in another tab, log in as the driver and run a trip. This page updates live.</div>`;
+};
+
+/* ---------- students ---------- */
+VIEWS.students = () => {
+  const kids = mine(S.children);
+  return `<div class="row between" style="margin-bottom:16px"><div><h1>Students</h1><p class="lead" style="margin:0">${kids.length} riding with you. Parents see their children when they log in with the email you enter here.</p></div><button class="btn btn-p" onclick="openAddStudent()">+ Add student</button></div>
+  <div class="card tbl-wrap"><table><thead><tr><th>Student</th><th class="hide-m">Parent</th><th class="hide-m">Stop</th><th>Routes</th><th></th></tr></thead><tbody>
+  ${kids.map(k => { const p = by(S.parents, k.parent); return `<tr>
+    <td><b>${esc(k.name)}</b><br><small style="color:var(--muted)">${esc(k.grade)} · ${esc(k.school)}</small></td>
+    <td class="hide-m">${esc(p?.name)} ${p?.invited ? '<span class="badge b-warn">Not signed up yet</span>' : ''}<br><small style="color:var(--muted)">${esc(p?.email)} · ${esc(p?.phone)}</small></td>
+    <td class="hide-m">${esc(k.stop)}</td>
+    <td>${k.routes.map(id => `<span class="chip">${esc(by(S.routes, id)?.session || '')}</span>`).join('') || '<span class="badge b-warn">None</span>'}</td>
+    <td style="white-space:nowrap"><button class="btn btn-o btn-sm" onclick="openAssign('${k.id}')">Edit</button> <button class="btn btn-g btn-sm" aria-label="Remove" onclick="removeStudent('${k.id}')">✕</button></td></tr>`; }).join('') || '<tr><td colspan="5" class="empty">No students yet</td></tr>'}
+  </tbody></table></div>`;
+};
+function assignForm(k) {
+  const rs = mine(S.routes), stops = [...new Set(rs.flatMap(r => r.stops.filter(s => !s.school).map(s => s.name)))];
+  const opt = (ses) => `<option value="">— None —</option>` + rs.filter(r => r.session === ses).map(r => `<option value="${r.id}" ${k.routes.includes(r.id) ? 'selected' : ''}>${esc(routeName(r))}</option>`).join('');
+  return `<div class="form">
+    <div class="full"><label class="f" for="aStop">Pick-up / drop-off stop</label><select class="inp" id="aStop">${!k.stop || stops.includes(k.stop) ? '' : `<option value="${esc(k.stop)}">${esc(k.stop)} (parent's address, not on a route yet)</option>`}${stops.map(s => `<option ${s === k.stop ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></div>
+    <div><label class="f" for="aAM">Morning route</label><select class="inp" id="aAM">${opt('AM')}</select></div>
+    <div><label class="f" for="aPM">Afternoon route</label><select class="inp" id="aPM">${opt('PM')}</select></div>
+  </div><p style="font-size:13px;color:var(--muted);margin-top:10px">Need a new stop? Add it to the route on the Routes page first.</p>`;
+}
+function openAddStudent() {
+  if (!mine(S.routes).length) { toast('Create a route first'); go('routes'); return; }
+  const grades = ['Preschool', 'Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6', 'Form 1', 'Form 2', 'Form 3', 'Form 4', 'Form 5'];
+  modal(`<h2>Add student</h2><p class="lead">The parent sees this child as soon as they sign up or log in with this email.</p>
+  <div class="form">
+    <div class="full"><label class="f" for="nName">Child's name *</label><input class="inp" id="nName"></div>
+    <div><label class="f" for="nSchool">School *</label><input class="inp" id="nSchool" list="opSchools2"><datalist id="opSchools2">${op().schools.map(s => `<option value="${esc(s)}">`).join('')}</datalist></div>
+    <div><label class="f" for="nGrade">Year / Form</label><select class="inp" id="nGrade">${grades.map(g => `<option>${g}</option>`).join('')}</select></div>
+    <div class="full" style="border-top:1px solid var(--line);padding-top:12px;font-weight:700">Parent</div>
+    <div><label class="f" for="nPName">Name *</label><input class="inp" id="nPName"></div>
+    <div><label class="f" for="nPPhone">Mobile *</label><div class="tel"><span>+60</span><input class="inp" id="nPPhone" type="tel"></div></div>
+    <div class="full"><label class="f" for="nPEmail">Email *</label><input class="inp" id="nPEmail" type="email" placeholder="The parent logs in with this"></div>
+    <div class="full" style="border-top:1px solid var(--line);padding-top:12px;font-weight:700">Bus</div>
+  </div>
+  ${assignForm({ stop: '', routes: [] })}
+  <div class="row" style="margin-top:16px"><button class="btn btn-p" onclick="addStudent()">Add student</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div>`);
+}
+function addStudent() {
+  if (!need(['nName', 'nSchool', 'nPName', 'nPPhone', 'nPEmail'])) return;
+  const email = fv('nPEmail').toLowerCase();
+  let p = S.parents.find(x => x.email.toLowerCase() === email);
+  const k = { id: uid(), parent: null, name: fv('nName'), school: fv('nSchool'), grade: fv('nGrade'), stop: '', op: USER.id, routes: [] };
+  if (!readAssign(k)) return;
+  if (!p) { p = { id: uid(), name: fv('nPName'), email: fv('nPEmail'), gender: 'Parent', phone: '+60 ' + fv('nPPhone'), invited: true }; S.parents.push(p); }
+  k.parent = p.id; S.children.push(k);
+  const rts = k.routes.map(id => by(S.routes, id));
+  notify(p.id, `🚌 ${op().name} added ${k.name}.${rts.length ? ' ' + rts.map(r => routeName(r) + ' (' + r.stops.find(s => s.name === k.stop)?.time + ' at ' + k.stop + ')').join(', ') + '.' : ''}`);
+  save(); closeModal(); render(); toast(p.invited ? `Added. Ask ${p.name} to sign up with ${p.email}.` : 'Student added. Parent notified.');
+}
+function readAssign(k) {
+  const stop = fv('aStop'), rts = [fv('aAM'), fv('aPM')].filter(Boolean);
+  const bad = rts.map(id => by(S.routes, id)).find(r => !r.stops.some(s => s.name === stop));
+  if (bad) { toast(`"${stop}" is not a stop on ${routeName(bad)}`); return false; }
+  const old = k.routes.slice();
+  k.stop = stop; k.routes = rts;
+  rts.filter(id => !old.includes(id)).forEach(id => { const r = by(S.routes, id); notify(r.driver, `🆕 ${k.name} joins ${routeName(r)} from ${stop}.`); });
+  return true;
+}
+function openAssign(kid) {
+  const k = by(S.children, kid);
+  modal(`<h2>${esc(k.name)}</h2><p class="lead">${esc(k.grade)} · ${esc(k.school)}</p>${assignForm(k)}
+  <div class="row" style="margin-top:16px"><button class="btn btn-p" onclick="saveAssign('${kid}')">Save</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div>`);
+}
+function saveAssign(kid) { const k = by(S.children, kid); if (!readAssign(k)) return; notify(k.parent, `ℹ️ ${op().name} updated ${k.name}'s bus details. Stop: ${k.stop}.`); save(); closeModal(); render(); toast('Saved'); }
+function removeStudent(kid) {
+  const k = by(S.children, kid); if (!confirm(`Remove ${k.name} from your service? The parent will be told.`)) return;
+  k.op = null; k.routes = []; notify(k.parent, `${op().name} has removed ${k.name} from their bus service.`); save(); render();
+}
+
+/* ---------- routes ---------- */
+VIEWS.routes = () => {
+  const rs = mine(S.routes), ds = mine(S.drivers), bs = mine(S.buses);
+  return `<div class="row between" style="margin-bottom:16px"><div><h1>Routes</h1><p class="lead" style="margin:0">Stops, times, bus and driver for each trip.</p></div><button class="btn btn-p" onclick="openRoute()">+ Add route</button></div>
+  ${rs.map(r => { const kids = routeKids(r), b = by(S.buses, r.bus); return `<div class="card">
+    <div class="row between"><div><b style="font-size:17px">${r.session === 'AM' ? '🌅' : '🌇'} ${esc(routeName(r))}</b><div style="font-size:14px;color:var(--muted)">${kids.length} student${kids.length === 1 ? "" : "s"}${b ? ` · ${b.seats} seats` : ''}${b && kids.length > b.seats ? ' · <span style="color:var(--bad)">over capacity</span>' : ''}</div></div>
+      <div class="row" style="gap:6px"><button class="btn btn-o btn-sm" onclick="openRoute('${r.id}')">Edit</button><button class="btn btn-g btn-sm" aria-label="Delete route" onclick="delRoute('${r.id}')">✕</button></div></div>
+    <div class="mini-stops">${r.stops.map(s => `<span class="${s.school ? 's' : ''}">${s.school ? '🏫 ' : ''}${esc(s.name)} · ${s.time} (${routeKids(r).filter(k => k.stop === s.name).length || (s.school ? kids.length : 0)})</span>`).join('')}</div>
+    <div class="form" style="grid-template-columns:1fr 1fr;margin-top:6px">
+      <div><label class="f">Bus</label><select class="inp" onchange="setRoute('${r.id}','bus',this.value)"><option value="">— None —</option>${bs.map(b => `<option value="${b.id}" ${b.id === r.bus ? 'selected' : ''}>${esc(b.plate)} · ${b.seats} seats</option>`).join('')}</select></div>
+      <div><label class="f">Driver</label><select class="inp" onchange="setRoute('${r.id}','driver',this.value)"><option value="">— None —</option>${ds.map(d => `<option value="${d.id}" ${d.id === r.driver ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</select></div>
+    </div></div>`; }).join('') || '<div class="card empty">No routes yet. Add your buses and drivers first, then create a route.</div>'}`;
+};
+function setRoute(rid, field, val) {
+  const r = by(S.routes, rid); if (tripFor(rid).status === 'running') { toast("Can't change this while the trip is running"); render(); return; }
+  r[field] = val || null;
+  if (field === 'driver' && val) notify(val, `🗺️ You've been assigned to ${routeName(r)}.`);
+  save(); toast('Route updated');
+}
+function openRoute(rid) {
+  const r = rid ? by(S.routes, rid) : null;
+  const stopsTxt = r ? r.stops.filter(s => !s.school).map(s => `${s.name}, ${s.time}`).join('\n') : '';
+  const sch = r ? r.stops.find(s => s.school) : null;
+  modal(`<h2>${r ? 'Edit route' : 'New route'}</h2><p class="lead">The route is named after its driver, session and school, e.g. "Faizal Hassan · Morning · SK Taman Megah". The school is the last stop in the morning and the first in the afternoon.</p>
+  <div class="form">
+    <div><label class="f" for="rDrv">Driver</label><select class="inp" id="rDrv"><option value="">— None —</option>${mine(S.drivers).map(d => `<option value="${d.id}" ${(r ? r.driver === d.id : mine(S.drivers)[0]?.id === d.id) ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</select></div>
+    <div><label class="f" for="rBus">Bus</label><select class="inp" id="rBus"><option value="">— None —</option>${mine(S.buses).map(b => `<option value="${b.id}" ${(r ? r.bus === b.id : mine(S.buses)[0]?.id === b.id) ? 'selected' : ''}>${esc(b.plate)}</option>`).join('')}</select></div>
+    <div><label class="f" for="rSes">Session</label><select class="inp" id="rSes"><option value="AM" ${r?.session === 'AM' ? 'selected' : ''}>Morning (to school)</option><option value="PM" ${r?.session === 'PM' ? 'selected' : ''}>Afternoon (to home)</option></select></div>
+    <div><label class="f" for="rSchool">School *</label><input class="inp" id="rSchool" list="opSchools" value="${esc(r?.school || '')}"><datalist id="opSchools">${op().schools.map(s => `<option value="${esc(s)}">`).join('')}</datalist></div>
+    <div><label class="f" for="rSchTime">Time at school *</label><input class="inp" id="rSchTime" type="time" value="${sch?.time || '07:20'}"></div>
+    <div></div>
+    <div class="full"><label class="f" for="rStops">Stops in order, one per line: name, time *</label><textarea class="inp" id="rStops" style="min-height:120px" placeholder="Jalan SS2/24, 06:45&#10;Taman Paramount, 07:00">${esc(stopsTxt)}</textarea></div>
+    <div class="full row"><button class="btn btn-p" onclick="saveRoute(${r ? `'${r.id}'` : ''})">${r ? 'Save route' : 'Create route'}</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div>
+  </div>`);
+}
+function saveRoute(rid) {
+  if (!need(['rSchool', 'rSchTime', 'rStops'])) return;
+  const lines = fv('rStops').split('\n').map(l => l.trim()).filter(Boolean);
+  const stops = [];
+  for (const l of lines) { const m = l.match(/^(.*?)[,\s]+(\d{1,2}[:.]\d{2})$/); if (!m) { toast('Each stop needs a time, e.g. "Taman Paramount, 07:00"'); return; } stops.push({ name: m[1].trim(), time: m[2].replace('.', ':').padStart(5, '0') }); }
+  const ses = fv('rSes'), school = { name: fv('rSchool'), time: fv('rSchTime'), school: true };
+  const all = ses === 'AM' ? [...stops, school] : [school, ...stops];
+  if (rid) {
+    if (tripFor(rid).status === 'running') { toast("Can't edit while the trip is running"); return; }
+    const r = by(S.routes, rid), newDrv = fv('rDrv') || null;
+    if (newDrv && newDrv !== r.driver) notify(newDrv, `🗺️ You've been assigned to a ${ses === 'AM' ? 'morning' : 'afternoon'} route to ${school.name}.`);
+    Object.assign(r, { session: ses, school: school.name, stops: all, driver: newDrv, bus: fv('rBus') || null });
+  } else {
+    const d = fv('rDrv') || null;
+    S.routes.push({ id: uid(), op: USER.id, session: ses, school: school.name, bus: fv('rBus') || null, driver: d, stops: all });
+    if (d) notify(d, `🗺️ You've been assigned to a new ${ses === 'AM' ? 'morning' : 'afternoon'} route to ${school.name}.`);
+  }
+  save(); closeModal(); render(); toast(rid ? 'Route saved' : 'Route created');
+}
+function delRoute(rid) {
+  const r = by(S.routes, rid); if (tripFor(rid).status === 'running') { toast("Can't delete a running trip"); return; }
+  if (!confirm(`Delete ${routeName(r)}? ${routeKids(r).length} students will be unassigned from it.`)) return;
+  S.children.forEach(c => { c.routes = c.routes.filter(x => x !== rid); }); S.routes = S.routes.filter(x => x.id !== rid); delete S.trips[rid];
+  save(); render();
+}
+
+/* ---------- drivers ---------- */
+VIEWS.drivers = () => {
+  const ds = mine(S.drivers), bs = mine(S.buses);
+  return `<div class="row between" style="margin-bottom:16px"><div><h1>Drivers</h1><p class="lead" style="margin:0">Drivers log in to the Onboard app with the email you set here.</p></div><button class="btn btn-p" onclick="openDriver()">+ Add driver</button></div>
+  <div class="card tbl-wrap"><table><thead><tr><th>Driver</th><th class="hide-m">Login email</th><th>Bus</th><th class="hide-m">Routes</th><th>Today</th><th></th></tr></thead><tbody>
+  ${ds.map(d => { const rs = S.routes.filter(r => r.driver === d.id), run = rs.find(r => tripFor(r.id).status === 'running'); return `<tr>
+    <td><div class="row" style="gap:10px;flex-wrap:nowrap">${av(d.name, 34)}<div><b>${esc(d.name)}</b><br><small style="color:var(--muted)">${esc(d.phone)}</small></div></div></td>
+    <td class="hide-m">${esc(d.email)}</td>
+    <td><select class="inp" onchange="setDriverBus('${d.id}',this.value)"><option value="">— None —</option>${bs.map(b => `<option value="${b.id}" ${b.id === d.bus ? 'selected' : ''}>${esc(b.plate)}</option>`).join('')}</select></td>
+    <td class="hide-m">${rs.map(r => `<span class="chip">${esc(routeName(r))}</span>`).join('') || '—'}</td>
+    <td>${run ? '<span class="live">Driving</span>' : rs.length && rs.every(r => tripFor(r.id).status === 'done') ? '<span class="badge b-ok">Done</span>' : '<span class="badge b-n">Off duty</span>'}</td>
+    <td><button class="btn btn-g btn-sm" aria-label="Remove driver" onclick="delDriver('${d.id}')">✕</button></td></tr>`; }).join('') || '<tr><td colspan="6" class="empty">No drivers yet</td></tr>'}
+  </tbody></table></div>`;
+};
+function openDriver() {
+  modal(`<h2>Add driver</h2><p class="lead">They'll use this email to log in to the Onboard app as a driver.</p><div class="form">
+    <div class="full"><label class="f" for="dName">Full name *</label><input class="inp" id="dName"></div>
+    <div><label class="f" for="dPhone">Mobile *</label><div class="tel"><span>+60</span><input class="inp" id="dPhone" type="tel"></div></div>
+    <div><label class="f" for="dBus">Bus</label><select class="inp" id="dBus"><option value="">— None —</option>${mine(S.buses).map(b => `<option value="${b.id}">${esc(b.plate)}</option>`).join('')}</select></div>
+    <div class="full"><label class="f" for="dEmail">Login email *</label><input class="inp" id="dEmail" type="email"></div>
+    <div class="full row"><button class="btn btn-p" onclick="addDriver()">Add driver</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div></div>`);
+}
+function addDriver() {
+  if (!need(['dName', 'dPhone', 'dEmail'])) return;
+  if (S.drivers.some(d => d.email.toLowerCase() === fv('dEmail').toLowerCase())) { toast('That email is already used by a driver'); return; }
+  const d = { id: uid(), op: USER.id, name: fv('dName'), phone: '+60 ' + fv('dPhone'), email: fv('dEmail'), bus: fv('dBus') || null, status: 'active' };
+  S.drivers.push(d); notify(d.id, `Welcome to Onboard! ${op().name} added you as a driver.`);
+  save(); closeModal(); render(); toast('Driver added');
+}
+function setDriverBus(did, bid) { by(S.drivers, did).bus = bid || null; save(); toast('Saved'); }
+function delDriver(did) {
+  const d = by(S.drivers, did), rs = S.routes.filter(r => r.driver === did);
+  if (rs.some(r => tripFor(r.id).status === 'running')) { toast(`${d.name} is driving right now`); return; }
+  if (!confirm(`Remove ${d.name}?${rs.length ? ' Their ' + rs.length + ' route(s) will have no driver.' : ''}`)) return;
+  rs.forEach(r => r.driver = null); S.drivers = S.drivers.filter(x => x.id !== did); save(); render();
+}
+
+/* ---------- buses ---------- */
+VIEWS.buses = () => {
+  const bs = mine(S.buses);
+  return `<div class="row between" style="margin-bottom:16px"><div><h1>Buses</h1><p class="lead" style="margin:0">Your vehicles and how full they are.</p></div><button class="btn btn-p" onclick="openBus()">+ Add bus</button></div>
+  <div class="grid3" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${bs.map(b => {
+    const rs = S.routes.filter(r => r.bus === b.id), max = Math.max(0, ...rs.map(r => routeKids(r).length)), d = S.drivers.find(x => x.bus === b.id);
+    return `<div class="card" style="margin:0"><div class="row between"><b style="font-size:18px">${esc(b.plate)}</b><button class="btn btn-g btn-sm" aria-label="Remove bus" onclick="delBus('${b.id}')">✕</button></div>
+      <div style="color:var(--muted);font-size:14px">${esc(b.model)} · ${b.seats} seats</div>
+      <div class="prog" style="margin:12px 0 6px"><div style="width:${Math.min(100, max / b.seats * 100)}%;${max > b.seats ? 'background:var(--bad)' : ''}"></div></div>
+      <div style="font-size:14px">${max} / ${b.seats} seats used on its busiest route</div>
+      <div style="font-size:14px;margin-top:8px">🧑‍✈️ ${esc(d?.name || 'No driver')}</div></div>`;
+  }).join('') || '<div class="card empty" style="grid-column:1/-1">No buses yet. Add your first vehicle.</div>'}</div>`;
+};
+function openBus() {
+  modal(`<h2>Add bus</h2><div class="form" style="margin-top:12px">
+    <div><label class="f" for="bPlate">Plate number *</label><input class="inp" id="bPlate" placeholder="WXY 1234" style="text-transform:uppercase"></div>
+    <div><label class="f" for="bSeats">Seats *</label><input class="inp" id="bSeats" type="number" min="1" value="14"></div>
+    <div class="full"><label class="f" for="bModel">Make / model</label><input class="inp" id="bModel" placeholder="Toyota Hiace"></div>
+    <div class="full row"><button class="btn btn-p" onclick="addBus()">Add bus</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div></div>`);
+}
+function addBus() {
+  if (!need(['bPlate', 'bSeats'])) return;
+  S.buses.push({ id: uid(), op: USER.id, plate: fv('bPlate').toUpperCase(), model: fv('bModel') || 'Van', seats: Math.max(1, +fv('bSeats')) });
+  save(); closeModal(); render(); toast('Bus added');
+}
+function delBus(bid) {
+  const b = by(S.buses, bid); if (!confirm(`Remove ${b.plate}?`)) return;
+  S.routes.forEach(r => { if (r.bus === bid) r.bus = null; }); S.drivers.forEach(d => { if (d.bus === bid) d.bus = null; });
+  S.buses = S.buses.filter(x => x.id !== bid); save(); render();
+}
+
+/* ---------- incidents (reported by parents) ---------- */
+let incFilter = 'active';
+VIEWS.incidents = () => {
+  const all = S.incidents.filter(i => i.op === USER.id);
+  const list = incFilter === 'active' ? all.filter(i => i.status !== 'resolved') : all;
+  return `<div class="row between" style="margin-bottom:16px"><div><h1>Incidents</h1><p class="lead" style="margin:0">Safety and vehicle problems reported by parents.</p></div>
+    <div class="seg"><button class="${incFilter === 'active' ? 'on' : ''}" onclick="incFilter='active';render()">To handle (${all.filter(i => i.status !== 'resolved').length})</button><button class="${incFilter === 'all' ? 'on' : ''}" onclick="incFilter='all';render()">All</button></div></div>
+  ${list.length ? list.map(i => {
+    const p = by(S.parents, i.from), k = by(S.children, i.child), r = by(S.routes, i.route), b = by(S.buses, i.bus), d = r && by(S.drivers, r.driver);
+    return `<div class="card inc ${i.status}">
+      <div class="row between"><div><b style="font-size:17px">${esc(i.category)}</b><div style="font-size:13px;color:var(--muted)">${i.date === today() ? 'Today' : i.date} ${i.time} · ${esc(b?.plate || 'Bus not given')}${r ? ' · ' + esc(routeName(r)) : ''}${d ? ' · driver ' + esc(d.name) : ''}</div></div>
+        <select class="inp" style="width:auto" aria-label="Status" onchange="setIncStatus('${i.id}',this.value)">${[['open', 'Open'], ['progress', 'In progress'], ['resolved', 'Resolved']].map(([v, l]) => `<option value="${v}" ${i.status === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      <div style="margin:10px 0;font-size:15px">${esc(i.text)}</div>
+      ${i.photo ? `<img src="${i.photo}" class="inc-photo" alt="Photo from parent" onclick="showPhoto(this.src)">` : ''}
+      <div style="font-size:14px;margin-top:8px">Reported by <b>${esc(p?.name)}</b>${k ? ` (${esc(k.name)}'s ${esc(p?.gender === 'Dad' ? 'dad' : p?.gender === 'Mom' ? 'mom' : 'parent')})` : ''} · <a href="tel:${esc((p?.phone || '').replace(/\s/g, ''))}">${esc(p?.phone)}</a></div>
+      ${(i.replies || []).map(x => `<div class="reply"><b>${esc(x.name)}</b> · <small style="color:var(--muted)">${x.time}</small><div>${esc(x.text)}</div></div>`).join('')}
+      <div class="row" style="margin-top:12px;flex-wrap:nowrap"><input class="inp" id="rep_${i.id}" placeholder="Reply to ${esc(p?.name.split(' ')[0] || 'parent')}…" onkeydown="if(event.key==='Enter')replyInc('${i.id}')"><button class="btn btn-p btn-sm" onclick="replyInc('${i.id}')">Reply</button></div>
+    </div>`;
+  }).join('') : `<div class="card empty">${incFilter === 'active' ? 'Nothing to handle. 🎉' : 'No incidents reported yet.'}</div>`}`;
+};
+function setIncStatus(id, st) {
+  const i = S.incidents.find(x => x.id === id); i.status = st;
+  const label = { open: 'reopened', progress: 'being looked into', resolved: 'resolved' }[st];
+  notify(i.from, `🚨 Your report "${i.category}" is now ${label}.`);
+  save(); render(); toast('Status updated. Parent notified.');
+}
+function replyInc(id) {
+  const el = document.getElementById('rep_' + id), text = el.value.trim(); if (!text) return;
+  const i = S.incidents.find(x => x.id === id);
+  i.replies = i.replies || []; i.replies.push({ name: op().name, text, time: nowTime(), date: today() });
+  if (i.status === 'open') i.status = 'progress';
+  notify(i.from, `💬 ${op().name} replied to your report "${i.category}": ${text}`);
+  el.value = ''; save(); render(); toast('Reply sent');
+}
+
+/* ---------- announcements ---------- */
+VIEWS.announce = () => {
+  const rs = mine(S.routes), sent = (S.announcements || []).filter(a => a.op === USER.id);
+  return `<h1>Announcements</h1><p class="lead">Send a notice to parents or drivers. It appears in their notifications.</p>
+  <div class="grid3" style="grid-template-columns:1fr 1.2fr">
+  <div class="card" style="align-self:start"><h3>📣 New announcement</h3><div class="form" style="grid-template-columns:1fr">
+    <div><label class="f" for="mTo">Send to</label><select class="inp" id="mTo"><option value="parents">All parents</option><option value="drivers">All drivers</option>${rs.map(r => `<option value="r:${r.id}">Parents on ${esc(routeName(r))}</option>`).join('')}</select></div>
+    <div><label class="f" for="mText">Announcement</label><textarea class="inp" id="mText" placeholder="e.g. No bus service on Friday for the public holiday."></textarea></div>
+    <div><button class="btn btn-p" onclick="sendMsg()">Send announcement</button></div></div></div>
+  <div class="card"><h3>Sent</h3>${sent.length ? sent.map(a => `<div class="list-i" style="align-items:flex-start"><div class="grow"><b style="white-space:normal;font-weight:500">${esc(a.text)}</b><small>${a.date === today() ? 'Today' : a.date} ${a.time} · ${esc(a.to)} (${a.count})</small></div></div>`).join('') : '<div class="empty">No announcements yet</div>'}</div>
+  </div>`;
+};
+function sendMsg() {
+  const to = fv('mTo'), text = fv('mText'); if (!text) { toast('Write an announcement first'); return; }
+  let ids = [], label;
+  if (to === 'parents') { ids = [...new Set(mine(S.children).map(k => k.parent))]; label = 'All parents'; }
+  else if (to === 'drivers') { ids = mine(S.drivers).map(d => d.id); label = 'All drivers'; }
+  else { const r = by(S.routes, to.slice(2)); ids = [...new Set(routeKids(r).map(k => k.parent))]; label = 'Parents on ' + routeName(r); }
+  ids.forEach(id => notify(id, `📣 ${op().name}: ${text}`));
+  S.announcements = S.announcements || [];
+  S.announcements.unshift({ id: uid(), op: USER.id, to: label, count: ids.length, text, date: today(), time: nowTime() });
+  save(); render(); toast(`Sent to ${ids.length} ${to === 'drivers' ? 'driver' : 'parent'}${ids.length === 1 ? '' : 's'}`);
+}
+
+/* ---------- notifications ---------- */
+VIEWS.notifs = () => {
+  const notes = notesFor(USER.id);
+  setTimeout(() => { if (unreadFor(USER.id)) { markRead(USER.id); } }, 1500);
+  return `<h1>Notifications</h1><p class="lead">Activity from your drivers and parents.</p>
+  <div class="card">${notes.length ? notes.map(n => `<div class="list-i"><div class="grow"><b style="white-space:normal;font-weight:${n.read ? 500 : 700}">${esc(n.text)}</b><small>${n.date === today() ? 'Today' : n.date} · ${n.time}</small></div>${n.read ? '' : '<span class="badge b-bad">New</span>'}</div>`).join('') : '<div class="empty">Nothing yet</div>'}</div>`;
+};
+
+/* ---------- settings ---------- */
+VIEWS.settings = () => { const o = op(); return `<h1>Settings</h1><p class="lead">Your company details, shown to parents and drivers.</p>
+  <div class="card"><div class="form">
+    <div class="full"><label class="f" for="sName">Company / service name</label><input class="inp" id="sName" value="${esc(o.name)}"></div>
+    <div><label class="f" for="sOwner">Owner</label><input class="inp" id="sOwner" value="${esc(o.owner)}"></div>
+    <div><label class="f" for="sPhone">Phone</label><input class="inp" id="sPhone" value="${esc(o.phone)}"></div>
+    <div><label class="f" for="sArea">Area</label><input class="inp" id="sArea" value="${esc(o.area)}"></div>
+    <div class="full"><label class="f" for="sSchools">Schools served (comma separated)</label><input class="inp" id="sSchools" value="${esc(o.schools.join(', '))}"></div>
+    <div class="full"><button class="btn btn-p" onclick="saveSettings()">Save changes</button></div>
+  </div></div>`; };
+function saveSettings() {
+  const o = op(); Object.assign(o, { name: fv('sName') || o.name, owner: fv('sOwner') || o.owner, phone: fv('sPhone'), area: fv('sArea'), schools: fv('sSchools').split(',').map(s => s.trim()).filter(Boolean) });
+  save(); render(); toast('Saved');
+}
+
+if (location.hash === '#demo' && !USER) { const o = by(S.operators, 'op1') || S.operators[0]; setUser({ role: 'operator', id: o.id, name: o.name }); history.replaceState(null, '', location.pathname); }
+render();
+</script>
+</body>
+</html>

@@ -220,3 +220,5 @@ textarea.inp{min-height:90px;resize:vertical}
 .attach{width:42px;height:42px;border-radius:10px;display:grid;place-items:center;color:var(--muted);cursor:pointer;flex-shrink:0}
 .attach:hover{background:var(--tint);color:var(--accent)}
 .msg-photo{display:block;max-width:220px;width:100%;border-radius:10px;margin:2px 0 4px;cursor:pointer}
+.demo-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:22px;padding-top:18px;border-top:1px dashed #f0d6bd}
+.demo-row span{font-size:14px;font-weight:600;color:var(--muted);margin-right:2px}
