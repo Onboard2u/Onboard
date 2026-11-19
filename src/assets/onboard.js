@@ -7,8 +7,10 @@ const COLORS = ['#ff8110', '#c25400', '#e0a100', '#d9622b', '#8a5a3c', '#1f9d63'
 
 /* ---------- small helpers ---------- */
 const uid = () => Math.random().toString(36).slice(2, 9);
-const today = () => new Date().toISOString().slice(0, 10);
-const tomorrow = () => new Date(Date.now() + 864e5).toISOString().slice(0, 10);
+/* local calendar dates (Malaysia is UTC+8, so UTC dates would be a day behind before 8am) */
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const today = () => ymd(new Date());
+const tomorrow = () => { const d = new Date(); d.setDate(d.getDate() + 1); return ymd(d); };
 const nowTime = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const initials = n => String(n || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
