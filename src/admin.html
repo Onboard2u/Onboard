@@ -31,8 +31,10 @@ td select.inp{padding:6px 8px;min-width:120px}
 </header>
 <div id="view"></div>
 <nav class="bnav" id="bnav"></nav>
+<!-- VENDOR -->
 
 <script src="assets/onboard.js"></script>
+<script src="assets/listparser.js"></script>
 <script>
 let tab = 'dash', authMode = location.hash === '#signup' ? 'signup' : 'login', liveOpen = {};
 const me = () => USER;
@@ -50,6 +52,7 @@ const NAV = [
   { id: 'dash', ic: '📊', label: 'Dashboard', short: 'Home' },
   { id: 'live', ic: '🛰️', label: 'Live trips', short: 'Live', badge: () => mine(S.routes).filter(r => tripFor(r.id).status === 'running').length, live: true },
   { id: 'students', ic: '👧', label: 'Students' },
+  { id: 'import', ic: '📄', label: 'Import bus list' },
   { id: 'routes', ic: '🗺️', label: 'Routes' },
   { id: 'drivers', ic: '🧑‍✈️', label: 'Drivers' },
   { id: 'buses', ic: '🚐', label: 'Buses' },
@@ -184,73 +187,260 @@ VIEWS.live = () => {
 
 /* ---------- students ---------- */
 VIEWS.students = () => {
-  const kids = mine(S.children);
-  return `<div class="row between" style="margin-bottom:16px"><div><h1>Students</h1><p class="lead" style="margin:0">${kids.length} riding with you. Parents see their children when they log in with the email you enter here.</p></div><button class="btn btn-p" onclick="openAddStudent()">+ Add student</button></div>
-  <div class="card tbl-wrap"><table><thead><tr><th>Student</th><th class="hide-m">Parent</th><th class="hide-m">Stop</th><th>Routes</th><th></th></tr></thead><tbody>
-  ${kids.map(k => { const p = by(S.parents, k.parent); return `<tr>
-    <td><b>${esc(k.name)}</b><br><small style="color:var(--muted)">${esc(k.grade)} · ${esc(k.school)}</small></td>
-    <td class="hide-m">${esc(p?.name)} ${p?.invited ? '<span class="badge b-warn">Not signed up yet</span>' : ''}<br><small style="color:var(--muted)">${esc(p?.email)} · ${esc(p?.phone)}</small></td>
-    <td class="hide-m">${esc(k.stop)}</td>
-    <td>${k.routes.map(id => `<span class="chip">${esc(by(S.routes, id)?.session || '')}</span>`).join('') || '<span class="badge b-warn">None</span>'}</td>
-    <td style="white-space:nowrap"><button class="btn btn-o btn-sm" onclick="openAssign('${k.id}')">Edit</button> <button class="btn btn-g btn-sm" aria-label="Remove" onclick="removeStudent('${k.id}')">✕</button></td></tr>`; }).join('') || '<tr><td colspan="5" class="empty">No students yet</td></tr>'}
+  const all = mine(S.children), rs = mine(S.routes);
+  const kids = studentFilter ? all.filter(k => k.routes.includes(studentFilter)) : all;
+  return `<div class="row between" style="margin-bottom:16px"><div><h1>Students</h1><p class="lead" style="margin:0">${all.length} riding with you. Parents see their children when they sign up with a mobile number or email listed here.</p></div>
+    <div class="row" style="gap:8px"><button class="btn btn-o" onclick="go('import')">⬆ Import bus list</button><button class="btn btn-p" onclick="openStudent()">+ Add student</button></div></div>
+  ${rs.length > 1 ? `<div style="margin-bottom:12px"><select class="inp" style="width:auto" aria-label="Filter by route" onchange="studentFilter=this.value;render()"><option value="">All routes (${all.length})</option>${rs.map(r => `<option value="${r.id}" ${studentFilter === r.id ? 'selected' : ''}>${esc(routeName(r))} (${routeKids(r).length})</option>`).join('')}</select></div>` : ''}
+  <div class="card tbl-wrap"><table><thead><tr><th>Student</th><th class="hide-m">Contacts</th><th class="hide-m">Pick-up / drop-off</th><th>Routes</th><th></th></tr></thead><tbody>
+  ${kids.map(k => { const cs = kidContacts(k), signed = kidParents(k).map(id => by(S.parents, id)).filter(p => p && !p.invited); return `<tr>
+    <td><b>${esc(k.name)}</b><br><small style="color:var(--muted)">${esc(k.grade)} · ${esc(k.school)}${k.phone ? ' · ' + esc(k.phone) : ''}</small>${k.remark ? `<small class="remark">⚠️ ${esc(k.remark)}</small>` : ''}</td>
+    <td class="hide-m" style="font-size:14px">${cs.map(c => `${esc(c.label)} · ${esc(c.phone)}`).join('<br>') || '—'}<br>${signed.length ? `<span class="badge b-ok">${signed.length} on Onboard</span>` : '<span class="badge b-warn">Not signed up yet</span>'}</td>
+    <td class="hide-m" style="font-size:14px;max-width:260px">${esc(k.stop)}</td>
+    <td>${k.routes.map(id => `<span class="chip">${esc(by(S.routes, id)?.session === 'AM' ? 'Morning' : 'Afternoon')}</span>`).join('') || '<span class="badge b-warn">None</span>'}</td>
+    <td style="white-space:nowrap"><button class="btn btn-o btn-sm" onclick="openStudent('${k.id}')">Edit</button> <button class="btn btn-g btn-sm" aria-label="Remove ${esc(k.name)}" onclick="removeStudent('${k.id}')">✕</button></td></tr>`; }).join('') || `<tr><td colspan="5" class="empty">No students yet. <a href="#" onclick="go('import');return false">Import a bus list</a> or add them one by one.</td></tr>`}
   </tbody></table></div>`;
 };
-function assignForm(k) {
+let studentFilter = '';
+const contactsText = cs => (cs || []).map(c => `${c.label} ${c.phone}`).join('\n');
+function openStudent(kid) {
+  const k = kid ? by(S.children, kid) : { name: '', grade: '', school: op().schools[0] || '', phone: '', contacts: [], remark: '', stop: '', routes: [] };
   const rs = mine(S.routes), stops = [...new Set(rs.flatMap(r => r.stops.filter(s => !s.school).map(s => s.name)))];
-  const opt = (ses) => `<option value="">— None —</option>` + rs.filter(r => r.session === ses).map(r => `<option value="${r.id}" ${k.routes.includes(r.id) ? 'selected' : ''}>${esc(routeName(r))}</option>`).join('');
-  return `<div class="form">
-    <div class="full"><label class="f" for="aStop">Pick-up / drop-off stop</label><select class="inp" id="aStop">${!k.stop || stops.includes(k.stop) ? '' : `<option value="${esc(k.stop)}">${esc(k.stop)} (parent's address, not on a route yet)</option>`}${stops.map(s => `<option ${s === k.stop ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></div>
-    <div><label class="f" for="aAM">Morning route</label><select class="inp" id="aAM">${opt('AM')}</select></div>
-    <div><label class="f" for="aPM">Afternoon route</label><select class="inp" id="aPM">${opt('PM')}</select></div>
-  </div><p style="font-size:13px;color:var(--muted);margin-top:10px">Need a new stop? Add it to the route on the Routes page first.</p>`;
-}
-function openAddStudent() {
-  if (!mine(S.routes).length) { toast('Create a route first'); go('routes'); return; }
-  const grades = ['Preschool', 'Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5', 'Year 6', 'Form 1', 'Form 2', 'Form 3', 'Form 4', 'Form 5'];
-  modal(`<h2>Add student</h2><p class="lead">The parent sees this child as soon as they sign up or log in with this email.</p>
+  const amR = rs.find(r => r.session === 'AM' && k.routes.includes(r.id)), amTime = amR?.stops.find(s => s.name === k.stop)?.time || '';
+  const pEmail = kid ? (by(S.parents, k.parent)?.email || '') : '';
+  const opt = ses => `<option value="">— None —</option>` + rs.filter(r => r.session === ses).map(r => `<option value="${r.id}" ${k.routes.includes(r.id) ? 'selected' : ''}>${esc(routeName(r))}</option>`).join('');
+  modal(`<h2>${kid ? 'Edit student' : 'Add student'}</h2><p class="lead">${kid ? 'Changes are saved for the driver and parents straight away.' : 'Parents see this child when they sign up with one of the numbers or the email below.'}</p>
   <div class="form">
-    <div class="full"><label class="f" for="nName">Child's name *</label><input class="inp" id="nName"></div>
-    <div><label class="f" for="nSchool">School *</label><input class="inp" id="nSchool" list="opSchools2"><datalist id="opSchools2">${op().schools.map(s => `<option value="${esc(s)}">`).join('')}</datalist></div>
-    <div><label class="f" for="nGrade">Year / Form</label><select class="inp" id="nGrade">${grades.map(g => `<option>${g}</option>`).join('')}</select></div>
-    <div class="full" style="border-top:1px solid var(--line);padding-top:12px;font-weight:700">Parent</div>
-    <div><label class="f" for="nPName">Name *</label><input class="inp" id="nPName"></div>
-    <div><label class="f" for="nPPhone">Mobile *</label><div class="tel"><span>+60</span><input class="inp" id="nPPhone" type="tel"></div></div>
-    <div class="full"><label class="f" for="nPEmail">Email *</label><input class="inp" id="nPEmail" type="email" placeholder="The parent logs in with this"></div>
+    <div class="full"><label class="f" for="eName">Student name *</label><input class="inp" id="eName" value="${esc(k.name)}"></div>
+    <div><label class="f" for="eYear">Year / Form</label><input class="inp" id="eYear" list="years" value="${esc(k.grade)}" placeholder="Year 3"><datalist id="years">${['Preschool', ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map(n => 'Year ' + n), ...[1, 2, 3, 4, 5].map(n => 'Form ' + n)].map(g => `<option value="${g}">`).join('')}</datalist></div>
+    <div><label class="f" for="eSchool">School *</label><input class="inp" id="eSchool" list="opSchools2" value="${esc(k.school)}"><datalist id="opSchools2">${op().schools.map(x => `<option value="${esc(x)}">`).join('')}</datalist></div>
+    <div><label class="f" for="ePhone">Student's own number</label><input class="inp" id="ePhone" type="tel" value="${esc(k.phone || '')}"></div>
+    <div><label class="f" for="eEmail">Parent email (optional)</label><input class="inp" id="eEmail" type="email" value="${esc(pEmail)}"></div>
+    <div class="full"><label class="f" for="eContacts">Parent contacts, one per line</label><textarea class="inp" id="eContacts" style="min-height:70px" placeholder="Dad 012-345 6789&#10;Mom 019-876 5432">${esc(contactsText(kid ? kidContacts(k) : []))}</textarea></div>
+    <div class="full"><label class="f" for="eRemark">Remarks for the driver</label><input class="inp" id="eRemark" value="${esc(k.remark || '')}" placeholder="e.g. 2.30 PM dismissal on Monday & Friday"></div>
     <div class="full" style="border-top:1px solid var(--line);padding-top:12px;font-weight:700">Bus</div>
+    <div class="full"><label class="f" for="eStop">Pick-up / drop-off address</label><input class="inp" id="eStop" list="stopList" value="${esc(k.stop)}" placeholder="Pick an existing stop or type a new address"><datalist id="stopList">${stops.map(x => `<option value="${esc(x)}">`).join('')}</datalist></div>
+    <div><label class="f" for="eAM">Morning route</label><select class="inp" id="eAM">${opt('AM')}</select></div>
+    <div><label class="f" for="eAMt">Morning pick-up time</label><input class="inp" id="eAMt" type="time" value="${amTime}"></div>
+    <div class="full"><label class="f" for="ePM">Afternoon route</label><select class="inp" id="ePM">${opt('PM')}</select></div>
   </div>
-  ${assignForm({ stop: '', routes: [] })}
-  <div class="row" style="margin-top:16px"><button class="btn btn-p" onclick="addStudent()">Add student</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div>`);
+  <p style="font-size:13px;color:var(--muted);margin-top:10px">A new address is added to the chosen routes as a stop.</p>
+  <div class="row" style="margin-top:16px"><button class="btn btn-p" onclick="saveStudent(${kid ? `'${kid}'` : ''})">${kid ? 'Save changes' : 'Add student'}</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div>`);
 }
-function addStudent() {
-  if (!need(['nName', 'nSchool', 'nPName', 'nPPhone', 'nPEmail'])) return;
-  const email = fv('nPEmail').toLowerCase();
-  let p = S.parents.find(x => x.email.toLowerCase() === email);
-  const k = { id: uid(), parent: null, name: fv('nName'), school: fv('nSchool'), grade: fv('nGrade'), stop: '', op: USER.id, routes: [] };
-  if (!readAssign(k)) return;
-  if (!p) { p = { id: uid(), name: fv('nPName'), email: fv('nPEmail'), gender: 'Parent', phone: '+60 ' + fv('nPPhone'), invited: true }; S.parents.push(p); }
-  k.parent = p.id; S.children.push(k);
-  const rts = k.routes.map(id => by(S.routes, id));
-  notify(p.id, `🚌 ${op().name} added ${k.name}.${rts.length ? ' ' + rts.map(r => routeName(r) + ' (' + r.stops.find(s => s.name === k.stop)?.time + ' at ' + k.stop + ')').join(', ') + '.' : ''}`);
-  save(); closeModal(); render(); toast(p.invited ? `Added. Ask ${p.name} to sign up with ${p.email}.` : 'Student added. Parent notified.');
+/* put a stop on a route if it is not there yet (morning: before school, afternoon: after it) */
+function ensureStop(r, name, time) {
+  if (!name) return;
+  const st = r.stops.find(s => s.name === name);
+  if (st) { if (time && r.session === 'AM') st.time = time; return; }
+  const ns = { name, time: r.session === 'AM' ? (time || '') : '' };
+  if (r.session === 'AM') { const si = r.stops.findIndex(s => s.school); r.stops.splice(si < 0 ? r.stops.length : si, 0, ns); }
+  else r.stops.push(ns);
+  if (r.session === 'AM' && time) { const school = r.stops.filter(s => s.school), rest = r.stops.filter(s => !s.school).sort((a, b) => (a.time || '99').localeCompare(b.time || '99')); r.stops = [...rest, ...school]; }
 }
-function readAssign(k) {
-  const stop = fv('aStop'), rts = [fv('aAM'), fv('aPM')].filter(Boolean);
-  const bad = rts.map(id => by(S.routes, id)).find(r => !r.stops.some(s => s.name === stop));
-  if (bad) { toast(`"${stop}" is not a stop on ${routeName(bad)}`); return false; }
+/* find or create the parent account a child is linked to, from email or contact numbers */
+function linkParent(k, email) {
+  const cs = k.contacts || [];
+  let p = (email && S.parents.find(x => (x.email || '').toLowerCase() === email.toLowerCase())) || S.parents.find(x => cs.some(c => samePhone(c.phone, x.phone)));
+  if (!p && (cs.length || email)) {
+    const c = cs[0] || { label: 'Parent', phone: '' };
+    p = { id: uid(), name: `${c.label === 'Parent' ? 'Parent' : c.label} of ${k.name.split(' ')[0]}`, email: email || '', gender: ['Dad', 'Mom'].includes(c.label) ? c.label : 'Guardian', phone: c.phone, invited: true };
+    S.parents.push(p);
+  }
+  if (p && email && p.invited && !p.email) p.email = email;
+  if (p) { if (!k.parent || !by(S.parents, k.parent)) k.parent = p.id; else if (k.parent !== p.id) k.guardians = [...new Set([...(k.guardians || []), p.id])]; }
+  // anyone already on Onboard with one of these numbers gets linked too
+  S.parents.filter(x => !x.invited && cs.some(c => samePhone(c.phone, x.phone)) && !kidParents(k).includes(x.id)).forEach(x => { k.guardians = [...new Set([...(k.guardians || []), x.id])]; });
+}
+function saveStudent(kid) {
+  if (!need(['eName', 'eSchool'])) return;
+  const isNew = !kid, k = isNew ? { id: uid(), parent: null, op: USER.id, routes: [] } : by(S.children, kid);
+  const routes = [fv('eAM'), fv('ePM')].filter(Boolean), stop = fv('eStop');
+  if (routes.length && !stop) { toast('Add a pick-up / drop-off address for the routes'); return; }
+  for (const id of routes) if (tripFor(id).status === 'running' && !by(S.routes, id).stops.some(s => s.name === stop)) { toast("Can't add a new stop while that trip is running"); return; }
   const old = k.routes.slice();
-  k.stop = stop; k.routes = rts;
-  rts.filter(id => !old.includes(id)).forEach(id => { const r = by(S.routes, id); notify(r.driver, `🆕 ${k.name} joins ${routeName(r)} from ${stop}.`); });
-  return true;
+  Object.assign(k, { name: fv('eName'), grade: fv('eYear'), school: fv('eSchool'), phone: fv('ePhone'), remark: fv('eRemark'), stop, routes,
+    contacts: ListParser.parseContacts(fv('eContacts')) });
+  routes.forEach(id => ensureStop(by(S.routes, id), stop, by(S.routes, id).session === 'AM' ? fv('eAMt') : ''));
+  linkParent(k, fv('eEmail'));
+  if (isNew) S.children.push(k);
+  routes.filter(id => !old.includes(id)).forEach(id => { const r = by(S.routes, id); if (r.driver) notify(r.driver, `🆕 ${k.name} joins ${routeName(r)} from ${stop}.`); });
+  notifyParents(k, isNew ? `🚌 ${op().name} added ${k.name} to Onboard.` : `ℹ️ ${op().name} updated ${k.name}'s details.`);
+  save(); closeModal(); render(); toast(isNew ? 'Student added' : 'Saved');
 }
-function openAssign(kid) {
-  const k = by(S.children, kid);
-  modal(`<h2>${esc(k.name)}</h2><p class="lead">${esc(k.grade)} · ${esc(k.school)}</p>${assignForm(k)}
-  <div class="row" style="margin-top:16px"><button class="btn btn-p" onclick="saveAssign('${kid}')">Save</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div>`);
-}
-function saveAssign(kid) { const k = by(S.children, kid); if (!readAssign(k)) return; notify(k.parent, `ℹ️ ${op().name} updated ${k.name}'s bus details. Stop: ${k.stop}.`); save(); closeModal(); render(); toast('Saved'); }
 function removeStudent(kid) {
   const k = by(S.children, kid); if (!confirm(`Remove ${k.name} from your service? The parent will be told.`)) return;
-  k.op = null; k.routes = []; notify(k.parent, `${op().name} has removed ${k.name} from their bus service.`); save(); render();
+  k.op = null; k.routes = []; notifyParents(k, `${op().name} has removed ${k.name} from their bus service.`); save(); render();
+}
+
+/* ---------- import a bus list (PDF / Word / Excel / CSV) ---------- */
+let imp = null, impBusy = false, impDone = null;
+async function vendorText(id) {
+  const el = document.getElementById(id); if (!el) return null;
+  const bin = Uint8Array.from(atob(el.textContent.trim()), c => c.charCodeAt(0));
+  return await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+}
+const blobUrl = code => URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
+let _pdfjs = null, _jszip = null;
+async function getPdfjs() {
+  if (_pdfjs) return _pdfjs;
+  const lib = await vendorText('vendor-pdfjs');
+  if (lib) { _pdfjs = await import(blobUrl(lib)); _pdfjs.GlobalWorkerOptions.workerSrc = blobUrl(await vendorText('vendor-pdfjs-worker')); }
+  else { _pdfjs = await import('../vendor/pdf.min.mjs'); _pdfjs.GlobalWorkerOptions.workerSrc = new URL('../vendor/pdf.worker.min.mjs', location.href).href; }
+  return _pdfjs;
+}
+async function getJSZip() {
+  if (_jszip) return _jszip;
+  const code = await vendorText('vendor-jszip');
+  await new Promise((ok, fail) => { const sc = document.createElement('script'); sc.src = code ? blobUrl(code) : '../vendor/jszip.min.js'; sc.onload = ok; sc.onerror = fail; document.head.appendChild(sc); });
+  return (_jszip = window.JSZip);
+}
+async function readListFile(file) {
+  const name = file.name.toLowerCase(), buf = new Uint8Array(await file.arrayBuffer());
+  if (name.endsWith('.pdf') || file.type === 'application/pdf') return ListParser.readPdf(await getPdfjs(), buf);
+  if (name.endsWith('.docx')) return ListParser.readDocx(await (await getJSZip()).loadAsync(buf));
+  if (name.endsWith('.xlsx')) return ListParser.readXlsx(await (await getJSZip()).loadAsync(buf));
+  if (name.endsWith('.csv') || name.endsWith('.txt')) return ListParser.readCsv(new TextDecoder().decode(buf));
+  if (name.endsWith('.doc') || name.endsWith('.xls')) throw new Error('Old .doc / .xls files can\'t be read. In Word or Excel, use "Save as" to save it as .docx / .xlsx or PDF, then upload that.');
+  throw new Error('Please upload a PDF, Word (.docx), Excel (.xlsx) or CSV file.');
+}
+async function handleImportFile(file) {
+  if (!file) return;
+  impBusy = file.name; impDone = null; render();
+  try {
+    const d = await readListFile(file);
+    const drv = matchDriver(d.driver), sch = d.school || op().schools[0] || '';
+    imp = {
+      file: file.name, warnings: d.warnings, title: d.title,
+      driver: { name: d.driver.name || drv?.name || '', phone: d.driver.phone || drv?.phone || '', plate: d.driver.plate || '' },
+      school: sch,
+      sections: d.sections.map(sec => ({
+        session: sec.session, schoolTime: sec.session === 'AM' ? addMin(sec.rows.map(r => r.time).filter(Boolean).sort().pop() || '07:10', 20) : '14:30',
+        rows: sec.rows.map(r => ({ name: r.name, year: r.year, phone: r.studentPhone, address: r.address, contacts: contactsText(r.contacts), remark: r.remark, time: r.time }))
+      }))
+    };
+    if (!imp.sections.length) { toast(d.warnings[0] || 'No students found in this file'); imp = null; }
+  } catch (e) { console.error(e); toast(e.message && e.message.length < 200 ? e.message : "Sorry, couldn't read that file."); imp = null; }
+  impBusy = false; render();
+}
+const addMin = (t, m) => { const [h, mm] = t.split(':').map(Number), x = Math.min(23 * 60 + 59, h * 60 + mm + m); return String(Math.floor(x / 60)).padStart(2, '0') + ':' + String(x % 60).padStart(2, '0'); };
+const plateKey = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const matchDriver = d => d && mine(S.drivers).find(x => (d.phone && samePhone(x.phone, d.phone)) || (d.name && x.name.toLowerCase() === d.name.toLowerCase()));
+const matchBus = plate => plate && mine(S.buses).find(b => plateKey(b.plate) === plateKey(plate));
+function impSet(path, v) { const ks = path.split('.'); let o = imp; while (ks.length > 1) o = o[ks.shift()]; o[ks[0]] = v; }
+
+VIEWS.import = () => {
+  if (impBusy) return `<h1>Import bus list</h1><div class="card" style="text-align:center;padding:48px 20px"><div class="spinner"></div><b>Reading ${esc(impBusy)}…</b><p style="color:var(--muted);margin-top:6px">Finding the driver, van and students.</p></div>`;
+  if (impDone) return importDoneView();
+  if (!imp) return `<h1>Import bus list</h1><p class="lead">Upload the list you already use for a bus. Onboard reads it and fills in the driver, van, students, addresses, parent contacts, remarks and pick-up times. You check everything before it's saved.</p>
+    <label class="drop" id="dropZone" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="event.preventDefault();this.classList.remove('over');handleImportFile(event.dataTransfer.files[0])">
+      <input type="file" accept=".pdf,.docx,.xlsx,.csv,application/pdf" style="display:none" onchange="handleImportFile(this.files[0])">
+      <div style="font-size:40px">📄</div><b style="font-size:18px">Drop your list here, or tap to choose a file</b>
+      <span style="color:var(--muted)">PDF, Word (.docx), Excel (.xlsx) or CSV</span></label>
+    <div class="card"><h3>What Onboard looks for</h3><div style="font-size:14px;color:var(--muted);display:grid;gap:6px">
+      <div>• A heading with <b>DRIVER NAME</b>, <b>VAN NUM</b> and <b>CONTACT NUM</b></div>
+      <div>• A table with columns like <b>NO, STUDENTS NAME, YEAR, STUDENTS CONTACT, ADDRESS, PARENTS CONTACT, REMARKS, PICK UP TIME</b> (English or Malay)</div>
+      <div>• Merged cells are fine, e.g. siblings sharing one address or pick-up time</div>
+      <div>• Each table becomes a list you can import as a morning or afternoon route</div>
+      <div>• Scanned or photographed lists can't be read. Use the original file, or a PDF saved from Word or Excel.</div>
+      <div>🔒 The file is read on this device and isn't uploaded anywhere.</div></div></div>
+    <button class="btn btn-g btn-sm" onclick="go('students')">← Back to students</button>`;
+  // review
+  const drv = matchDriver(imp.driver), bus = matchBus(imp.driver.plate);
+  const total = new Set(imp.sections.filter(s => s.session !== 'skip').flatMap(s => s.rows.map(r => r.name.trim().toLowerCase()).filter(Boolean))).size;
+  const sessLabel = s => s === 'AM' ? 'Pick-up time' : 'Drop-off time';
+  return `<div class="row between" style="margin-bottom:6px"><div><h1>Check and edit</h1><p class="lead" style="margin:0">From <b>${esc(imp.file)}</b>. Fix anything that's wrong, then import.</p></div>
+    <div class="row" style="gap:8px"><button class="btn btn-g" onclick="if(confirm('Discard this import?')){imp=null;render()}">Cancel</button><button class="btn btn-p" onclick="doImport()">Import ${total} student${total === 1 ? '' : 's'}</button></div></div>
+  ${(imp.warnings || []).map(w => `<div class="warnbox" style="margin-bottom:12px">${esc(w)}</div>`).join('')}
+  <div class="grid3" style="grid-template-columns:1fr 1fr;margin:16px 0 0">
+    <div class="card"><h3>🧑‍✈️ Driver &amp; van</h3><div class="form">
+      <div><label class="f" for="iDrv">Driver name *</label><input class="inp" id="iDrv" value="${esc(imp.driver.name)}" oninput="impSet('driver.name',this.value)"></div>
+      <div><label class="f" for="iDrvP">Driver mobile</label><input class="inp" id="iDrvP" type="tel" value="${esc(imp.driver.phone)}" oninput="impSet('driver.phone',this.value)"></div>
+      <div><label class="f" for="iPlate">Van / bus plate</label><input class="inp" id="iPlate" value="${esc(imp.driver.plate)}" oninput="impSet('driver.plate',this.value.toUpperCase())" style="text-transform:uppercase"></div>
+      <div style="font-size:13px;color:var(--muted);align-self:end">${drv ? `✓ Matches your driver <b>${esc(drv.name)}</b>` : 'A new driver will be added. They log in to the app with this mobile number.'}<br>${bus ? `✓ Matches your van <b>${esc(bus.plate)}</b>` : imp.driver.plate ? 'A new van will be added.' : ''}</div>
+    </div></div>
+    <div class="card"><h3>🏫 School</h3><div class="form" style="grid-template-columns:1fr">
+      <div><label class="f" for="iSchool">School name *</label><input class="inp" id="iSchool" list="opSchools3" value="${esc(imp.school)}" oninput="impSet('school',this.value)"><datalist id="opSchools3">${op().schools.map(x => `<option value="${esc(x)}">`).join('')}</datalist></div>
+      ${imp.title ? `<div style="font-size:13px;color:var(--muted)">List title: “${esc(imp.title)}”</div>` : ''}
+    </div></div>
+  </div>
+  ${imp.sections.map((sec, si) => `<div class="card imp-sec ${sec.session === 'skip' ? 'skipped' : ''}">
+    <div class="row between" style="margin-bottom:12px"><h3 style="margin:0">List ${si + 1} · ${sec.rows.length} student${sec.rows.length === 1 ? '' : 's'}</h3>
+      <div class="row" style="gap:8px">
+        <select class="inp" style="width:auto" aria-label="Import list ${si + 1} as" onchange="impSet('sections.${si}.session',this.value);sec_rerender()">
+          <option value="AM" ${sec.session === 'AM' ? 'selected' : ''}>Morning: home → school</option>
+          <option value="PM" ${sec.session === 'PM' ? 'selected' : ''}>Afternoon: school → home</option>
+          <option value="skip" ${sec.session === 'skip' ? 'selected' : ''}>Don't import this list</option></select>
+        ${sec.session !== 'skip' ? `<label style="font-size:14px;display:flex;gap:6px;align-items:center">${sec.session === 'AM' ? 'Arrive at school' : 'Leave school'} <input class="inp" type="time" style="width:auto" value="${sec.schoolTime}" onchange="impSet('sections.${si}.schoolTime',this.value)"></label>` : ''}
+      </div></div>
+    ${sec.session === 'skip' ? '' : `<div class="tbl-wrap"><table class="imp-tbl"><thead><tr><th>#</th><th>Student name *</th><th>Year</th><th>Student contact</th><th>Address</th><th>Parent contacts</th><th>Remarks</th><th>${sessLabel(sec.session)}</th><th></th></tr></thead><tbody>
+      ${sec.rows.map((r, ri) => { const f = (k, w, extra = '') => `<input class="inp" style="min-width:${w}px" aria-label="${k} for row ${ri + 1}" value="${esc(r[k])}" oninput="impSet('sections.${si}.rows.${ri}.${k}',this.value)" ${extra}>`;
+        const ta = (k, w) => `<textarea class="inp" rows="2" style="min-width:${w}px" aria-label="${k} for row ${ri + 1}" oninput="impSet('sections.${si}.rows.${ri}.${k}',this.value)">${esc(r[k])}</textarea>`;
+        return `<tr class="${r.name.trim() ? '' : 'bad'}"><td>${ri + 1}</td><td>${f('name', 170)}</td><td>${f('year', 80)}</td><td>${f('phone', 120)}</td><td>${ta('address', 230).replace('rows="2"', 'rows="3"')}</td><td>${ta('contacts', 170)}</td><td>${ta('remark', 150)}</td><td><input class="inp" type="time" style="min-width:110px" aria-label="time for row ${ri + 1}" value="${esc(r.time)}" onchange="impSet('sections.${si}.rows.${ri}.time',this.value)"></td>
+          <td><button class="btn btn-g btn-sm" aria-label="Remove row ${ri + 1}" onclick="imp.sections[${si}].rows.splice(${ri},1);sec_rerender()">✕</button></td></tr>`; }).join('')}
+    </tbody></table></div>
+    <button class="btn btn-o btn-sm" style="margin-top:10px" onclick="imp.sections[${si}].rows.push({name:'',year:'',phone:'',address:'',contacts:'',remark:'',time:''});sec_rerender()">+ Add row</button>`}
+  </div>`).join('')}
+  <div class="row" style="justify-content:flex-end;gap:8px"><button class="btn btn-g" onclick="if(confirm('Discard this import?')){imp=null;render()}">Cancel</button><button class="btn btn-p" onclick="doImport()">Import ${total} student${total === 1 ? '' : 's'}</button></div>`;
+};
+function sec_rerender() { const y = scrollY; render(); scrollTo(0, y); }
+
+function doImport() {
+  const d = imp.driver, school = imp.school.trim(), secs = imp.sections.filter(s => s.session !== 'skip');
+  if (!secs.length) { toast('Choose at least one list to import'); return; }
+  if (!d.name.trim()) { toast('Add the driver name'); document.getElementById('iDrv')?.focus(); return; }
+  if (!school) { toast('Add the school name'); document.getElementById('iSchool')?.focus(); return; }
+  const blank = secs.findIndex(s => s.rows.some(r => !r.name.trim()));
+  if (blank >= 0) { toast('Every row needs a student name (or remove the empty row)'); sec_rerender(); return; }
+  if (new Set(secs.map(s => s.session)).size < secs.length) { toast('Two lists are set to the same session. Make one Morning and one Afternoon, or skip one.'); return; }
+  const summary = { created: [], routes: [], students: new Set(), newStudents: 0, parents: 0 };
+  // driver + van
+  let drv = matchDriver(d), bus = matchBus(d.plate);
+  if (!bus && d.plate.trim()) { bus = { id: uid(), op: USER.id, plate: d.plate.trim().toUpperCase(), model: 'Van', seats: Math.max(14, ...secs.map(s => s.rows.length)) }; S.buses.push(bus); summary.created.push(`van ${bus.plate}`); }
+  if (!drv) { drv = { id: uid(), op: USER.id, name: d.name.trim(), phone: d.phone.trim(), email: '', bus: bus?.id || null, status: 'active' }; S.drivers.push(drv); summary.created.push(`driver ${drv.name}${drv.phone ? ' (logs in with ' + drv.phone + ')' : ''}`); }
+  else { if (d.phone.trim() && !drv.phone) drv.phone = d.phone.trim(); }
+  if (bus) drv.bus = bus.id;
+  if (!op().schools.some(x => x.toLowerCase() === school.toLowerCase())) op().schools.push(school);
+  for (const sec of secs) {
+    let r = mine(S.routes).find(x => x.driver === drv.id && x.session === sec.session && x.school.toLowerCase() === school.toLowerCase());
+    if (r && tripFor(r.id).status === 'running') { toast(`${routeName(r)} is running right now. Import again after the trip.`); return; }
+    if (!r) { r = { id: uid(), op: USER.id, session: sec.session, school, bus: bus?.id || null, driver: drv.id, stops: [{ name: school, time: sec.schoolTime, school: true }] }; S.routes.push(r); summary.created.push('route ' + routeName(r)); }
+    else { r.bus = bus?.id || r.bus; const sc = r.stops.find(x => x.school); if (sc) sc.time = sec.schoolTime; }
+    summary.routes.push(r.id);
+    sec.rows.forEach(row => {
+      const name = row.name.trim(), stop = row.address.trim() || `${name}'s stop`;
+      let k = mine(S.children).find(c => c.name.toLowerCase() === name.toLowerCase());
+      const isNew = !k;
+      if (isNew) { k = { id: uid(), parent: null, op: USER.id, routes: [] }; S.children.push(k); summary.newStudents++; }
+      const contacts = ListParser.parseContacts(row.contacts);
+      const merged = [...(k.contacts || [])]; contacts.forEach(c => { if (!merged.some(x => samePhone(x.phone, c.phone))) merged.push(c); });
+      // a child rides one morning and one afternoon route: replace any other route of this session
+      const otherSame = k.routes.filter(id => id !== r.id && by(S.routes, id)?.session === sec.session);
+      Object.assign(k, { name, grade: row.year.trim() || k.grade || '', school, phone: row.phone.trim() || k.phone || '', contacts: merged, remark: row.remark.trim() || k.remark || '', stop,
+        routes: [...k.routes.filter(id => !otherSame.includes(id) && id !== r.id), r.id] });
+      ensureStop(r, stop, sec.session === 'AM' ? row.time : '');
+      if (sec.session === 'PM' && row.time) { const st = r.stops.find(x => x.name === stop); if (st) st.time = row.time; }
+      const before = S.parents.length; linkParent(k, ''); summary.parents += S.parents.length - before;
+      summary.students.add(k.id);
+    });
+    // tidy stop order: morning by pick-up time then school; afternoon school first then by drop-off time
+    const sch = r.stops.filter(x => x.school), rest = r.stops.filter(x => !x.school);
+    if (rest.some(x => x.time)) rest.sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
+    r.stops = sec.session === 'AM' ? [...rest, ...sch] : [...sch, ...rest];
+    notify(drv.id, `📋 ${op().name} updated your ${sec.session === 'AM' ? 'morning' : 'afternoon'} list for ${school}: ${routeKids(r).length} students.`);
+  }
+  save();
+  impDone = { ...summary, students: summary.students.size, file: imp.file, driver: drv.name }; imp = null; render(); scrollTo(0, 0);
+}
+function importDoneView() {
+  const s = impDone;
+  return `<h1>Imported ✅</h1><p class="lead">${s.students} student${s.students === 1 ? '' : 's'} from <b>${esc(s.file)}</b>, driven by ${esc(s.driver)}.</p>
+  <div class="card"><div style="display:grid;gap:8px;font-size:15px">
+    ${[...new Set(s.routes)].map(id => { const r = by(S.routes, id); return `<div>🗺️ <b>${esc(routeName(r))}</b>: ${routeKids(r).length} students, ${r.stops.length} stops</div>`; }).join('')}
+    <div>👧 ${s.newStudents} new student${s.newStudents === 1 ? '' : 's'}, ${s.students - s.newStudents} updated</div>
+    ${s.created.map(c => `<div>➕ New ${esc(c)}</div>`).join('')}
+    <div>👨‍👩‍👧 ${s.parents} parent contact${s.parents === 1 ? '' : 's'} ready to join. Parents sign up in the Onboard app with the mobile number on your list and see their child straight away.</div>
+  </div></div>
+  <div class="row" style="gap:8px"><button class="btn btn-p" onclick="impDone=null;go('students')">View students</button><button class="btn btn-o" onclick="impDone=null;go('routes')">View routes</button><button class="btn btn-g" onclick="impDone=null;render()">Import another list</button></div>`;
 }
 
 /* ---------- routes ---------- */
@@ -284,7 +474,7 @@ function openRoute(rid) {
     <div><label class="f" for="rSchool">School *</label><input class="inp" id="rSchool" list="opSchools" value="${esc(r?.school || '')}"><datalist id="opSchools">${op().schools.map(s => `<option value="${esc(s)}">`).join('')}</datalist></div>
     <div><label class="f" for="rSchTime">Time at school *</label><input class="inp" id="rSchTime" type="time" value="${sch?.time || '07:20'}"></div>
     <div></div>
-    <div class="full"><label class="f" for="rStops">Stops in order, one per line: name, time *</label><textarea class="inp" id="rStops" style="min-height:120px" placeholder="Jalan SS2/24, 06:45&#10;Taman Paramount, 07:00">${esc(stopsTxt)}</textarea></div>
+    <div class="full"><label class="f" for="rStops">Stops in order, one per line: address, time *</label><textarea class="inp" id="rStops" style="min-height:120px" placeholder="Jalan SS2/24, 06:45&#10;Taman Paramount, 07:00">${esc(stopsTxt)}</textarea></div>
     <div class="full row"><button class="btn btn-p" onclick="saveRoute(${r ? `'${r.id}'` : ''})">${r ? 'Save route' : 'Create route'}</button><button class="btn btn-g" onclick="closeModal()">Cancel</button></div>
   </div>`);
 }
@@ -292,7 +482,7 @@ function saveRoute(rid) {
   if (!need(['rSchool', 'rSchTime', 'rStops'])) return;
   const lines = fv('rStops').split('\n').map(l => l.trim()).filter(Boolean);
   const stops = [];
-  for (const l of lines) { const m = l.match(/^(.*?)[,\s]+(\d{1,2}[:.]\d{2})$/); if (!m) { toast('Each stop needs a time, e.g. "Taman Paramount, 07:00"'); return; } stops.push({ name: m[1].trim(), time: m[2].replace('.', ':').padStart(5, '0') }); }
+  for (const l of lines) { const m = l.match(/^(.*?)(?:[,\s]+(\d{1,2}[:.]\d{2}))?$/); stops.push({ name: m[1].replace(/,\s*$/, '').trim(), time: m[2] ? m[2].replace('.', ':').padStart(5, '0') : '' }); }
   const ses = fv('rSes'), school = { name: fv('rSchool'), time: fv('rSchTime'), school: true };
   const all = ses === 'AM' ? [...stops, school] : [school, ...stops];
   if (rid) {
@@ -432,9 +622,9 @@ VIEWS.announce = () => {
 function sendMsg() {
   const to = fv('mTo'), text = fv('mText'); if (!text) { toast('Write an announcement first'); return; }
   let ids = [], label;
-  if (to === 'parents') { ids = [...new Set(mine(S.children).map(k => k.parent))]; label = 'All parents'; }
+  if (to === 'parents') { ids = [...new Set(mine(S.children).flatMap(kidParents))]; label = 'All parents'; }
   else if (to === 'drivers') { ids = mine(S.drivers).map(d => d.id); label = 'All drivers'; }
-  else { const r = by(S.routes, to.slice(2)); ids = [...new Set(routeKids(r).map(k => k.parent))]; label = 'Parents on ' + routeName(r); }
+  else { const r = by(S.routes, to.slice(2)); ids = [...new Set(routeKids(r).flatMap(kidParents))]; label = 'Parents on ' + routeName(r); }
   ids.forEach(id => notify(id, `📣 ${op().name}: ${text}`));
   S.announcements = S.announcements || [];
   S.announcements.unshift({ id: uid(), op: USER.id, to: label, count: ids.length, text, date: today(), time: nowTime() });

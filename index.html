@@ -237,6 +237,21 @@ textarea.inp{min-height:90px;resize:vertical}
 .msg-photo{display:block;max-width:220px;width:100%;border-radius:10px;margin:2px 0 4px;cursor:pointer}
 .demo-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:22px;padding-top:18px;border-top:1px dashed #f0d6bd}
 .demo-row span{font-size:14px;font-weight:600;color:var(--muted);margin-right:2px}
+.remark{display:block;color:#b8452f!important;font-weight:600}
+/* list import */
+.drop{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:40px 20px;margin-bottom:18px;border:2px dashed #f5c08e;border-radius:18px;background:#fff;cursor:pointer;transition:.15s}
+.drop:hover,.drop.over{background:var(--tint);border-color:var(--brand)}
+.imp-tbl td{padding:6px 4px;vertical-align:top}
+.imp-tbl th{font-size:13px}
+.imp-tbl .inp{padding:7px 8px;font-size:14px}
+.imp-tbl textarea.inp{min-height:0;resize:vertical}
+.imp-tbl tr.bad .inp:first-child{border-color:var(--bad)}
+.imp-sec.skipped{opacity:.6}
+.spinner{width:38px;height:38px;border-radius:50%;border:4px solid var(--tint);border-top-color:var(--brand);margin:0 auto 14px;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.bigbtn{white-space:normal;line-height:1.3}
+.kid .grow b{white-space:normal}
+.stopcard h2{word-break:break-word}
 
 </style>
 </head>
@@ -388,6 +403,15 @@ function markRead(id) { S.notes.forEach(n => { if (n.to === id) n.read = true; }
 const isAbsent = (childId, date, session) => S.absences.some(a => a.child === childId && a.date === date && (a.session === 'ALL' || a.session === session));
 /* route names lead with the driver: "Faizal Hassan · Morning · SK Taman Megah" */
 const routeName = r => r ? `${by(S.drivers, r.driver)?.name || 'No driver'} · ${r.session === 'AM' ? 'Morning' : 'Afternoon'} · ${r.school}` : '';
+/* ---------- people & phone numbers ----------
+   A child has one main parent account (k.parent), may have more linked accounts (k.guardians,
+   e.g. Mum and Dad both signed up), and a list of contact numbers from the operator's list. */
+const normPhone = s => { let d = String(s || '').replace(/\D/g, ''); if (d.startsWith('60') && d.length >= 10) d = '0' + d.slice(2); return d; };
+const samePhone = (a, b) => !!normPhone(a) && normPhone(a) === normPhone(b);
+const kidParents = k => [...new Set([k.parent, ...(k.guardians || [])].filter(Boolean))];
+const kidContacts = k => (k.contacts && k.contacts.length) ? k.contacts : kidParents(k).map(id => by(S.parents, id)).filter(p => p && p.phone).map(p => ({ label: p.gender || 'Parent', phone: p.phone }));
+function notifyParents(k, text) { kidParents(k).forEach(id => notify(id, text)); }
+const telHref = phone => 'tel:' + String(phone || '').replace(/[^\d+]/g, '');
 const routeKids = r => S.children.filter(c => c.routes.includes(r.id));
 
 /* today's trip for a route (a fresh idle one if it has not run yet today) */
@@ -437,7 +461,7 @@ const QUICK_MSGS = {
   parent: ['🙋 Running late, please wait 2 minutes', '🤒 My child is sick today, not riding', '🚗 I will send my child myself today', '📍 We are at the pick-up point', '👍 Noted, thank you!']
 };
 const chatMsgs = rid => S.chats.filter(m => m.route === rid);
-const chatMembers = r => ({ driver: by(S.drivers, r.driver), parents: [...new Set(routeKids(r).map(k => k.parent))].map(id => by(S.parents, id)).filter(Boolean) });
+const chatMembers = r => ({ driver: by(S.drivers, r.driver), parents: [...new Set(routeKids(r).flatMap(kidParents))].map(id => by(S.parents, id)).filter(Boolean) });
 const chatUnread = (uid_, rid) => Math.max(0, chatMsgs(rid).filter(m => m.from !== uid_).length - ((S.chatRead || {})[uid_ + ':' + rid] || 0));
 function markChatRead(uid_, rid) {
   S.chatRead = S.chatRead || {};
@@ -634,7 +658,7 @@ function openLogin(role) {
     <button class="${loginRole === 'driver' ? 'on' : ''}" onclick="openLogin('driver')"><b>🧑‍✈️ Driver</b><small>Run today's trips</small></button>
   </div>
   <div style="display:grid;gap:12px">
-    <div><label class="f" for="lEmail">Email</label><input class="inp" id="lEmail" type="email" value="${demo}"></div>
+    <div><label class="f" for="lEmail">Email or mobile number</label><input class="inp" id="lEmail" type="text" inputmode="email" autocomplete="username" value="${demo}"></div>
     <div><label class="f" for="lPass">Password</label><input class="inp" id="lPass" type="password" value="demo1234"></div>
     <button class="btn btn-p" onclick="doLogin()">${t('login')}</button>
     ${loginRole === 'parent' ? `<button class="btn btn-g btn-sm" onclick="openSignup()">Don't have an account? Register here</button>` : `<p style="font-size:13px;color:var(--muted);text-align:center">Driver accounts are created by your bus operator.</p>`}
@@ -642,15 +666,16 @@ function openLogin(role) {
   <div class="demo">Demo mode: any password works. ${loginRole === 'driver' ? 'Second driver: kumar@demo.my' : ''}</div>`);
 }
 function doLogin() {
-  const email = fv('lEmail').toLowerCase();
-  if (!email) { toast('Enter your email'); return; }
+  const id = fv('lEmail').toLowerCase();
+  if (!id) { toast('Enter your email or mobile number'); return; }
+  const match = x => (x.email && x.email.toLowerCase() === id) || (!id.includes('@') && samePhone(x.phone, id));
   if (loginRole === 'parent') {
-    const p = S.parents.find(x => x.email.toLowerCase() === email);
-    if (!p) { toast('No parent account with that email'); return; }
+    const p = S.parents.find(x => !x.invited && match(x));
+    if (!p) { toast(S.parents.some(x => x.invited && match(x)) ? 'Your operator has added you. Tap "Register here" to set up your account.' : 'No parent account with that email or number'); return; }
     setUser({ role: 'parent', id: p.id, name: p.name });
   } else {
-    const d = S.drivers.find(x => x.email.toLowerCase() === email);
-    if (!d) { toast('No driver account with that email. Ask your operator to add you.'); return; }
+    const d = S.drivers.find(match);
+    if (!d) { toast('No driver account with that email or number. Ask your operator to add you.'); return; }
     setUser({ role: 'driver', id: d.id, name: d.name, op: d.op, bus: d.bus });
   }
   closeModal(); go(USER.role); toast('Welcome, ' + USER.name);
@@ -663,7 +688,7 @@ function demoLogin(role) {
 }
 
 function openSignup() {
-  modal(`<h2>Sign up as parent</h2><p class="lead">Use the email you gave your bus operator, so your children appear straight away.</p>
+  modal(`<h2>Sign up as parent</h2><p class="lead">Use the email or mobile number your bus operator has, so your children appear straight away.</p>
   <div class="form">
     <div class="full"><label class="f" for="sName">Name *</label><input class="inp" id="sName" placeholder="Enter your name"></div>
     <div class="full"><label class="f" for="sEmail">Email *</label><input class="inp" id="sEmail" type="email" placeholder="Enter your email"></div>
@@ -677,13 +702,17 @@ function openSignup() {
 function doSignup() {
   if (!need(['sName', 'sEmail', 'sPhone', 'sPass'])) return;
   if (fv('sPass').length < 8) { toast('Password needs at least 8 characters'); return; }
-  const existing = S.parents.find(p => p.email.toLowerCase() === fv('sEmail').toLowerCase());
-  if (existing && !existing.invited) { toast('That email is already registered. Log in instead.'); return; }
+  const email = fv('sEmail').toLowerCase(), phone = '+60 ' + fv('sPhone').replace(/^\+?60\s*/, '').replace(/^0/, '');
+  if (S.parents.some(p => !p.invited && ((p.email || '').toLowerCase() === email || samePhone(p.phone, phone)))) { toast('That email or number is already registered. Log in instead.'); return; }
+  // the operator may already have added this parent (by email, or by phone number from an imported list)
+  const existing = S.parents.find(p => p.invited && (((p.email || '').toLowerCase() === email && email) || samePhone(p.phone, phone)));
   const p = existing || { id: uid() };
-  Object.assign(p, { name: fv('sName'), email: fv('sEmail'), gender: fv('sGender'), phone: '+60 ' + fv('sPhone'), invited: false });
+  Object.assign(p, { name: fv('sName'), email: fv('sEmail'), gender: fv('sGender'), phone, invited: false });
   if (!existing) S.parents.push(p);
-  const n = S.children.filter(c => c.parent === p.id).length;
-  notify(p.id, n ? `Welcome to Onboard! Your bus operator has already added ${n} child${n > 1 ? 'ren' : ''}.` : 'Welcome to Onboard! Your children will appear here once your bus operator adds them with this email.'); save();
+  // link any child whose contact numbers include this phone (e.g. Mum signs up, Dad is the main contact)
+  S.children.forEach(c => { if (!kidParents(c).includes(p.id) && (c.contacts || []).some(x => samePhone(x.phone, phone))) c.guardians = [...new Set([...(c.guardians || []), p.id])]; });
+  const n = S.children.filter(c => kidParents(c).includes(p.id)).length;
+  notify(p.id, n ? `Welcome to Onboard! Your bus operator has already added ${n} child${n > 1 ? 'ren' : ''}.` : 'Welcome to Onboard! Your children will appear here once your bus operator adds them with this email or mobile number.'); save();
   setUser({ role: 'parent', id: p.id, name: p.name });
   closeModal(); go('parent'); toast('Account created');
 }
@@ -702,12 +731,12 @@ function timeline(r, trip, highlightStop, tagText) {
     const cls = done || (running && i < trip.stop) ? 'done' : running && i === trip.stop ? 'now' : '';
     const tag = s.name === highlightStop ? `<span class="tl-tag">${esc(tagText)}</span>` : s.school ? '<span class="tl-tag">🏫 School</span>' : '';
     return `<div class="tl-i ${cls}"><div class="tl-dot">${cls === 'now' ? '🚌' : cls === 'done' ? '<span style="color:#fff;font-size:12px">✓</span>' : ''}</div>
-      <div class="tl-b"><b>${esc(s.name)}</b>${tag}<small>${s.time}${cls === 'now' ? ' · Bus is here' : ''}</small></div></div>`;
+      <div class="tl-b"><b style="word-break:break-word">${esc(s.name)}</b>${tag}<small>${s.time}${cls === 'now' ? ' · Bus is here' : ''}</small></div></div>`;
   }).join('')}</div>`;
 }
 
 /* ================= PARENT ================= */
-const myKids = () => S.children.filter(c => c.parent === me().id);
+const myKids = () => S.children.filter(c => kidParents(c).includes(me().id));
 
 function currentRouteFor(k) {
   const rs = k.routes.map(id => by(S.routes, id)).filter(Boolean);
@@ -764,7 +793,7 @@ function saveAbsence(kid) {
     if (date === today()) { const tr = S.trips[r.id]; if (tr && tr.date === today() && tr.status === 'running' && kidStatus(tr, kid) === 'waiting') tr.kids[kid] = 'absent'; }
     notify(r.driver, `📅 ${k.name} won't ride ${when}.${why ? ' Reason: ' + why : ''}`);
   });
-  if (k.op) notify(k.op, `📅 ${by(S.parents, k.parent).name}: ${k.name} won't ride ${when}.`);
+  if (k.op) notify(k.op, `📅 ${me().name}: ${k.name} won't ride ${when}.`);
   save(); closeModal(); render(); toast('Driver informed');
 }
 
@@ -776,6 +805,7 @@ VIEWS.parent.kids = () => {
     return `<div class="card"><div class="row">${av(k.name, 48)}<div class="grow"><b style="font-size:17px">${esc(k.name)}</b><small>${esc(k.grade)} · ${esc(k.school)}</small></div></div>
       <div style="margin-top:14px;font-size:14px;display:grid;gap:6px">
         <div>📍 Pick-up / drop-off: <b>${esc(k.stop)}</b></div>
+        ${k.remark ? `<div>📝 ${esc(k.remark)}</div>` : ''}
         <div>🚌 ${op ? `<b>${esc(op.name)}</b> · ${k.routes.map(id => `<span class="chip">${esc(routeName(by(S.routes, id)) || '')}</span>`).join('') || 'no route yet'}` : 'Not on a bus'}</div>
         ${op ? `<div>📞 Operator: <a href="tel:${esc(op.phone.replace(/\s/g, ''))}">${esc(op.phone)}</a></div>` : ''}
         ${abs.map(a => `<div>📅 Not riding ${a.date === today() ? 'today' : 'tomorrow'}${a.session === 'ALL' ? '' : a.session === 'AM' ? ' (morning)' : ' (afternoon)'} <button class="btn btn-g btn-sm" onclick="undoAbsence('${a.id}')">Undo</button></div>`).join('')}
@@ -819,7 +849,7 @@ function tripScreen(r) {
   if (tr.status === 'idle') {
     return `${back}<h1>${esc(routeName(r))}</h1><p class="lead">${kids.length} students · first stop ${r.stops[0].time}</p>${stats}
     <div class="card"><h3>Route</h3>${timeline(r, tr)}</div>
-    <div class="card"><h3>Students</h3>${kids.map(k => `<div class="kid">${av(k.name)}<div class="grow"><b>${esc(k.name)}</b><small>${esc(k.stop)} · ${esc(k.grade)}</small></div>${isAbsent(k.id, today(), r.session) ? '<span class="badge b-bad">Parent: not riding</span>' : ''}</div>`).join('') || '<div class="empty">No students on this route</div>'}</div>
+    <div class="card"><h3>Students</h3>${kids.map(k => `<div class="kid">${av(k.name)}<div class="grow"><b>${esc(k.name)}</b><small>${esc(k.stop)} · ${esc(k.grade)}</small>${k.remark ? `<small class="remark">⚠️ ${esc(k.remark)}</small>` : ''}</div>${isAbsent(k.id, today(), r.session) ? '<span class="badge b-bad">Parent: not riding</span>' : ''}</div>`).join('') || '<div class="empty">No students on this route</div>'}</div>
     <button class="btn btn-p bigbtn" onclick="startTrip('${r.id}')">▶ Start trip</button>`;
   }
   if (tr.status === 'done') {
@@ -835,10 +865,10 @@ function tripScreen(r) {
     if (act === 'pick' && s === 'waiting') acts = `<button class="btn btn-ok" onclick="kidDo('${r.id}','${k.id}','boarded')">Board</button><button class="btn btn-bad" onclick="kidDo('${r.id}','${k.id}','absent')">Absent</button>`;
     if (act === 'drop' && s === 'boarded') acts = `<button class="btn btn-n" onclick="kidDo('${r.id}','${k.id}','dropped')">Drop off</button>`;
     if (s === 'absent' && isAbsent(k.id, today(), r.session)) acts = '<span class="badge b-bad">Parent: not riding</span>';
-    return `<div class="kid">${av(k.name)}<div class="grow"><b>${esc(k.name)}</b><small>${act === 'drop' && st.school ? 'Drop at school' : esc(k.stop)} · ${esc(by(S.parents, k.parent)?.phone || '')}</small></div><div class="acts">${acts}</div></div>`;
+    return `<div class="kid">${av(k.name)}<div class="grow"><b>${esc(k.name)}</b><small>${st.school ? (act === 'drop' ? 'Drop at school · ' : 'Pick up at school · ') : ''}${kidContacts(k)[0] ? '<a href="' + telHref(kidContacts(k)[0].phone) + '">📞 ' + esc(kidContacts(k)[0].label) + ' ' + esc(kidContacts(k)[0].phone) + '</a>' : ''}${st.school ? ' · ' + esc(shortStop(k.stop)) : ''}</small>${k.remark ? `<small class="remark">⚠️ ${esc(k.remark)}</small>` : ''}</div><div class="acts">${acts}</div></div>`;
   };
   let footer;
-  if (!last) footer = `<button class="btn btn-p bigbtn" style="margin-top:14px" onclick="nextStop('${r.id}')">Depart to ${esc(r.stops[tr.stop + 1].name)} →</button>`;
+  if (!last) footer = `<button class="btn btn-p bigbtn" style="margin-top:14px" onclick="nextStop('${r.id}')">Depart to ${esc(shortStop(r.stops[tr.stop + 1].name))} →</button>`;
   else footer = `<label class="check"><input type="checkbox" id="chk" ${onBus.length ? 'disabled' : ''}><span><b>I have walked the whole bus and checked every seat.</b><br><small style="color:var(--muted)">No child is left on board.</small></span></label>
     ${onBus.length ? `<div class="warnbox">⚠️ ${onBus.map(k => esc(k.name)).join(', ')} still marked on the bus. Drop them off before ending the trip.</div>` : ''}
     <button class="btn btn-p bigbtn" style="margin-top:12px" ${onBus.length ? 'disabled' : ''} onclick="endTrip('${r.id}')">End trip</button>`;
@@ -851,13 +881,15 @@ function tripScreen(r) {
   ${stats}
   <div class="card"><h3>Route</h3>${timeline(r, tr)}</div>`;
 }
+/* long addresses: keep the first two parts for buttons and small labels */
+const shortStop = n => { const p = String(n || '').split(',').map(x => x.trim()).filter(Boolean); const t = p.slice(0, 2).join(', '); return t.length > 42 ? t.slice(0, 40) + '…' : t; };
 function logTrip(tr, text) { tr.log.push({ time: nowTime(), text }); }
 function startTrip(rid) {
   const r = by(S.routes, rid), kids = routeKids(r), d = me();
   const tr = { date: today(), status: 'running', stop: 0, kids: {}, log: [], startedAt: nowTime() };
   kids.forEach(k => { if (isAbsent(k.id, today(), r.session)) tr.kids[k.id] = 'absent'; });
   S.trips[rid] = tr; logTrip(tr, `Trip started by ${d.name}`);
-  kids.filter(k => !tr.kids[k.id]).forEach(k => notify(k.parent, `🚌 ${d.name} has started the ${r.session === 'AM' ? 'morning' : 'afternoon'} trip (${by(S.buses, r.bus)?.plate}).`));
+  kids.filter(k => !tr.kids[k.id]).forEach(k => notifyParents(k, `🚌 ${d.name} has started the ${r.session === 'AM' ? 'morning' : 'afternoon'} trip (${by(S.buses, r.bus)?.plate}).`));
   notify(r.op, `▶ ${d.name} started ${routeName(r)} at ${tr.startedAt}.`);
   arrive(r, tr);
   save(); render(); toast('Trip started. Parents notified.');
@@ -865,7 +897,7 @@ function startTrip(rid) {
 function arrive(r, tr) {
   const st = r.stops[tr.stop]; logTrip(tr, `Arrived at ${st.name}`);
   if (stopAction(r, tr.stop) === 'pick' && !st.school) stopKids(r, tr, tr.stop).filter(k => kidStatus(tr, k.id) === 'waiting')
-    .forEach(k => notify(k.parent, `📍 The bus has arrived at ${st.name}. Please bring ${k.name.split(' ')[0]} out now.`));
+    .forEach(k => notifyParents(k, `📍 The bus has arrived at ${st.name}. Please bring ${k.name.split(' ')[0]} out now.`));
 }
 function kidDo(rid, kid, st) {
   const r = by(S.routes, rid), tr = S.trips[rid], k = by(S.children, kid), stop = r.stops[tr.stop].name;
@@ -876,7 +908,7 @@ function kidDo(rid, kid, st) {
     dropped: r.session === 'AM' ? `🏫 ${first} arrived safely at ${stop} (${nowTime()}).` : `🏠 ${first} was dropped off at ${stop} (${nowTime()}).`,
     absent: `⚠️ ${first} was not at ${stop} and is marked absent. Call the driver if this is unexpected.`
   }[st];
-  notify(k.parent, msg); logTrip(tr, `${k.name}: ${st} at ${stop}`);
+  notifyParents(k, msg); logTrip(tr, `${k.name}: ${st} at ${stop}`);
   if (st === 'absent') notify(r.op, `⚠️ ${k.name} was a no-show at ${stop} (${routeName(r)}).`);
   save(); render();
 }
@@ -896,7 +928,7 @@ function nextStop(rid) {
   const nxt = tr.stop + 1 < r.stops.length ? r.stops[tr.stop + 1] : null;
   arrive(r, tr);
   if (nxt && !nxt.school && stopAction(r, tr.stop + 1) === 'pick') stopKids(r, tr, tr.stop + 1).filter(k => kidStatus(tr, k.id) === 'waiting')
-    .forEach(k => notify(k.parent, `⏱ The bus is one stop away from ${nxt.name}. Get ${k.name.split(' ')[0]} ready.`));
+    .forEach(k => notifyParents(k, `⏱ The bus is one stop away from ${nxt.name}. Get ${k.name.split(' ')[0]} ready.`));
   save(); render(); scrollTo(0, 0);
 }
 function endTrip(rid) {
@@ -913,9 +945,10 @@ VIEWS.driver.students = () => {
   const rs = myRoutes();
   return `<h1>Students</h1><p class="lead">Who rides with you, and how to reach their parents.</p>
   ${rs.map(r => `<div class="card"><h3>${r.session === 'AM' ? '🌅' : '🌇'} ${esc(routeName(r))}</h3>${routeKids(r).map(k => {
-    const p = by(S.parents, k.parent), ab = isAbsent(k.id, today(), r.session);
-    return `<div class="kid">${av(k.name)}<div class="grow"><b>${esc(k.name)}</b><small>${esc(k.stop)} · ${esc(k.grade)} · ${esc(p?.gender)}: ${esc(p?.name)}</small></div>
-      ${ab ? '<span class="badge b-bad">Not riding today</span>' : ''}<a class="btn btn-o btn-sm" style="text-decoration:none" href="tel:${esc((p?.phone || '').replace(/\s/g, ''))}" aria-label="Call ${esc(p?.name)}">📞</a></div>`;
+    const ab = isAbsent(k.id, today(), r.session), cs = kidContacts(k);
+    return `<div class="kid" style="align-items:flex-start">${av(k.name)}<div class="grow"><b>${esc(k.name)}</b><small>${esc(k.grade)}${k.phone ? ' · student ' + esc(k.phone) : ''}</small><small>📍 ${esc(k.stop)}</small>${k.remark ? `<small class="remark">⚠️ ${esc(k.remark)}</small>` : ''}
+        <div class="row" style="gap:6px;margin-top:6px">${cs.map(c => `<a class="btn btn-o btn-sm" style="text-decoration:none" href="${telHref(c.phone)}" aria-label="Call ${esc(c.label)} ${esc(c.phone)}">📞 ${esc(c.label)}</a>`).join('')}</div></div>
+      ${ab ? '<span class="badge b-bad">Not riding today</span>' : ''}</div>`;
   }).join('') || '<div class="empty">No students</div>'}</div>`).join('') || '<div class="card empty">No routes assigned yet.</div>'}`;
 };
 VIEWS.driver.alerts = notesView;

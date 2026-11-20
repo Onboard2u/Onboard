@@ -129,6 +129,15 @@ function markRead(id) { S.notes.forEach(n => { if (n.to === id) n.read = true; }
 const isAbsent = (childId, date, session) => S.absences.some(a => a.child === childId && a.date === date && (a.session === 'ALL' || a.session === session));
 /* route names lead with the driver: "Faizal Hassan · Morning · SK Taman Megah" */
 const routeName = r => r ? `${by(S.drivers, r.driver)?.name || 'No driver'} · ${r.session === 'AM' ? 'Morning' : 'Afternoon'} · ${r.school}` : '';
+/* ---------- people & phone numbers ----------
+   A child has one main parent account (k.parent), may have more linked accounts (k.guardians,
+   e.g. Mum and Dad both signed up), and a list of contact numbers from the operator's list. */
+const normPhone = s => { let d = String(s || '').replace(/\D/g, ''); if (d.startsWith('60') && d.length >= 10) d = '0' + d.slice(2); return d; };
+const samePhone = (a, b) => !!normPhone(a) && normPhone(a) === normPhone(b);
+const kidParents = k => [...new Set([k.parent, ...(k.guardians || [])].filter(Boolean))];
+const kidContacts = k => (k.contacts && k.contacts.length) ? k.contacts : kidParents(k).map(id => by(S.parents, id)).filter(p => p && p.phone).map(p => ({ label: p.gender || 'Parent', phone: p.phone }));
+function notifyParents(k, text) { kidParents(k).forEach(id => notify(id, text)); }
+const telHref = phone => 'tel:' + String(phone || '').replace(/[^\d+]/g, '');
 const routeKids = r => S.children.filter(c => c.routes.includes(r.id));
 
 /* today's trip for a route (a fresh idle one if it has not run yet today) */
@@ -178,7 +187,7 @@ const QUICK_MSGS = {
   parent: ['🙋 Running late, please wait 2 minutes', '🤒 My child is sick today, not riding', '🚗 I will send my child myself today', '📍 We are at the pick-up point', '👍 Noted, thank you!']
 };
 const chatMsgs = rid => S.chats.filter(m => m.route === rid);
-const chatMembers = r => ({ driver: by(S.drivers, r.driver), parents: [...new Set(routeKids(r).map(k => k.parent))].map(id => by(S.parents, id)).filter(Boolean) });
+const chatMembers = r => ({ driver: by(S.drivers, r.driver), parents: [...new Set(routeKids(r).flatMap(kidParents))].map(id => by(S.parents, id)).filter(Boolean) });
 const chatUnread = (uid_, rid) => Math.max(0, chatMsgs(rid).filter(m => m.from !== uid_).length - ((S.chatRead || {})[uid_ + ':' + rid] || 0));
 function markChatRead(uid_, rid) {
   S.chatRead = S.chatRead || {};
